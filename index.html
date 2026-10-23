@@ -875,7 +875,7 @@
             }
         }
 
-        // قائمة الحفظ والتصدير (GeoJSON, CSV, PDF) - [مُحدّثة ومصححة]
+        // قائمة الحفظ والتصدير (GeoJSON, CSV, PDF)
         function openSaveMenu() {
             const choice = prompt('اختر صيغة الحفظ المطلوبة:\n1 - GeoJSON\n2 - CSV\n3 - PDF (تقرير مطبوع)');
             if (choice === '1') {
@@ -985,7 +985,7 @@
             details.style.display = details.style.display === 'block' ? 'none' : 'block';
         }
 
-        // حذف النقطة مع كلمة المرور
+        // حذف النقطة مع كلمة المرور (محدث للويب)
         function deletePoint(pointId, pointName) {
             const password = prompt('الرجاء إدخال كلمة المرور لتأكيد حذف النقطة:');
             if (password === null) return;
@@ -995,7 +995,7 @@
             }
 
             if (confirm(`هل أنت متأكد من رغبتك في حذف النقطة (${pointName})؟`)) {
-                fetch(`http://localhost:3000/api/points/${pointId}`, {
+                fetch(`/api/points/${pointId}`, {
                     method: 'DELETE'
                 })
                 .then(res => res.json())
@@ -1011,7 +1011,7 @@
             }
         }
 
-        // إضافة نقطة جديدة
+        // إضافة نقطة جديدة (محدث للويب)
         function openAddPointModal() {
             const id = prompt('أدخل رقم النقطة (Point ID - رقم صحيح):');
             if (!id) return;
@@ -1037,7 +1037,7 @@
                 description: description || ''
             };
 
-            fetch('http://localhost:3000/api/points', {
+            fetch('/api/points', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newPoint)
@@ -1100,9 +1100,9 @@
             container.appendChild(div);
         }
 
-        // جلب النقاط وتحديث اللوحة الإحصائية
+        // جلب النقاط وتحديث اللوحة الإحصائية (محدث للويب)
         function loadPoints() {
-            fetch('http://localhost:3000/api/points')
+            fetch('/api/points')
                 .then(response => response.json())
                 .then(data => {
                     allPointsData = data;
