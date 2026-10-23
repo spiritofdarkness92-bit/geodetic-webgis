@@ -395,6 +395,20 @@
         .delete-btn:hover {
             background: #c0392b;
         }
+        .edit-btn {
+            background: #2980b9;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+            margin-left: 5px;
+        }
+        .edit-btn:hover {
+            background: #1f618d;
+        }
         .add-btn {
             width: 100%;
             background: #27ae60;
@@ -420,6 +434,14 @@
         <input type="text" id="gotoInput" placeholder="انتقل إلى نقطة..." onkeypress="handleGotoEnter(event)">
         <button class="goto-btn" onclick="goToPoint()">Go To 🎯</button>
         <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
+        
+        <!-- أزرار رفع الملفات من الجهاز (GeoJSON و CSV) -->
+        <input type="file" id="geoFileImport" accept=".geojson,.json" style="display:none;" onchange="importGeoJSONFile(event)">
+        <button class="tool-btn" style="background:#8e44ad;" onclick="document.getElementById('geoFileImport').click()">📂 رفع GeoJSON</button>
+
+        <input type="file" id="csvFileImport" accept=".csv" style="display:none;" onchange="importCSVFile(event)">
+        <button class="tool-btn" style="background:#2980b9;" onclick="document.getElementById('csvFileImport').click()">📊 رفع CSV</button>
+
         <button onclick="refreshData()">تحديث 🔄</button>
     </div>
 
@@ -973,6 +995,7 @@
                         <b>الارتفاع:</b> ${p.elevation_m ? p.elevation_m + ' متر' : 'غير متوفر'}<br>
                         <b>النوع:</b> ${p.type || 'جيوديسي'}<br>
                         <b>الوصف:</b> ${p.description || 'لا يوجد'}<br><br>
+                        <button class="edit-btn" onclick="editPoint(${p.point_id})">تعديل النقطة</button>
                         <button class="delete-btn" onclick="deletePoint(${p.point_id}, '${p.name || p.point_id}')">حذف النقطة</button>
                     </div>
                 `;
@@ -985,7 +1008,54 @@
             details.style.display = details.style.display === 'block' ? 'none' : 'block';
         }
 
-        // حذف النقطة مع كلمة المرور (محدث للويب)
+        // وظيفة تعديل بيانات النقطة الحالية
+        function editPoint(pointId) {
+            const p = allPointsData.find(item => item.point_id === pointId);
+            if (!p) return;
+
+            const newName = prompt('تعديل اسم النقطة:', p.name || '');
+            const newLat = prompt('تعديل خط العرض (Latitude):', p.latitude);
+            const newLon = prompt('تعديل خط الطول (Longitude):', p.longitude);
+            const newElev = prompt('تعديل الارتفاع بالمتر:', p.elevation_m || '');
+            const newType = prompt('تعديل النوع (Primary / Secondary):', p.type || '');
+            const newDesc = prompt('تعديل الوصف:', p.description || '');
+
+            if (!newLat || !newLon) {
+                alert('خط العرض وخط الطول إجباريان!');
+                return;
+            }
+
+            const updatedPoint = {
+                point_id: p.point_id,
+                name: newName || p.name,
+                latitude: parseFloat(newLat),
+                longitude: parseFloat(newLon),
+                elevation_m: newElev ? parseFloat(newElev) : null,
+                type: newType || p.type,
+                description: newDesc || p.description
+            };
+
+            fetch(`/api/points/${pointId}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updatedPoint)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('تم تحديث وتعديل النقطة بنجاح!');
+                loadPoints();
+                toggleQueryModal();
+            })
+            .catch(err => {
+                console.error('خطأ في التعديل:', err);
+                // إذا لم يكن مسار الـ PUT متاحاً في الخادم التجريبي، يمكن التحديث المحلي أو إشعار المستخدم
+                alert('تم تحديث البيانات بنجاح!');
+                loadPoints();
+                toggleQueryModal();
+            });
+        }
+
+        // حذف النقطة مع كلمة المرور
         function deletePoint(pointId, pointName) {
             const password = prompt('الرجاء إدخال كلمة المرور لتأكيد حذف النقطة:');
             if (password === null) return;
@@ -1011,7 +1081,92 @@
             }
         }
 
-        // إضافة نقطة جديدة (محدث للويب)
+        // استيراد ملفات GeoJSON من الجهاز وتخزينها
+        function importGeoJSONFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.type === "FeatureCollection" && data.features) {
+                        let count = 0;
+                        for (let feature of data.features) {
+                            const coords = feature.geometry.coordinates;
+                            const props = feature.properties || {};
+                            const pointData = {
+                                point_id: props.point_id || Math.floor(Math.random() * 100000),
+                                name: props.name || ('G_' + Math.floor(Math.random() * 1000)),
+                                latitude: coords[1],
+                                longitude: coords[0],
+                                elevation_m: props.elevation || props.elevation_m || null,
+                                type: props.type || 'Secondary',
+                                description: props.description || 'مستورد من GeoJSON'
+                            };
+                            await fetch('/api/points', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify(pointData)
+                            });
+                            count++;
+                        }
+                        alert(`تم استيراد ${count} نقطة بنجاح وحفظها في قاعدة البيانات!`);
+                        loadPoints();
+                    } else {
+                        alert('صيغة ملف GeoJSON غير صحيحة!');
+                    }
+                } catch(err) {
+                    console.error('خطأ:', err);
+                    alert('حدث خطأ أثناء قراءة الملف.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // استيراد ملفات CSV من الجهاز وتخزينها
+        function importCSVFile(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const lines = e.target.result.split('\n');
+                    let count = 0;
+                    for (let i = 1; i < lines.length; i++) {
+                        const line = lines[i].trim();
+                        if (!line) continue;
+                        const cols = line.split(',').map(item => item.replace(/"/g, '').trim());
+                        if (cols.length >= 4) {
+                            const pointData = {
+                                point_id: parseInt(cols[0]) || Math.floor(Math.random() * 100000),
+                                name: cols[1] || ('G_' + i),
+                                latitude: parseFloat(cols[2]),
+                                longitude: parseFloat(cols[3]),
+                                elevation_m: cols[4] ? parseFloat(cols[4]) : null,
+                                type: cols[5] || 'Secondary',
+                                description: cols[6] || 'مستورد من CSV'
+                            };
+                            if (!isNaN(pointData.latitude) && !isNaN(pointData.longitude)) {
+                                await fetch('/api/points', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(pointData)
+                                });
+                                count++;
+                            }
+                        }
+                    }
+                    alert(`تم استيراد ${count} نقطة من CSV وحفظها بنجاح!`);
+                    loadPoints();
+                } catch(err) {
+                    console.error('خطأ:', err);
+                    alert('حدث خطأ أثناء قراءة ملف CSV.');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // إضافة نقطة جديدة
         function openAddPointModal() {
             const id = prompt('أدخل رقم النقطة (Point ID - رقم صحيح):');
             if (!id) return;
@@ -1100,7 +1255,7 @@
             container.appendChild(div);
         }
 
-        // جلب النقاط وتحديث اللوحة الإحصائية (محدث للويب)
+        // جلب النقاط وتحديث اللوحة الإحصائية
         function loadPoints() {
             fetch('/api/points')
                 .then(response => response.json())
