@@ -16,16 +16,39 @@
             padding: 0;
             font-family: Tahoma, sans-serif;
             transition: all 0.3s ease;
+            overflow-x: hidden;
         }
         #map {
             width: 100vw;
             height: 100vh;
         }
-        /* لوحة التحكم العلوية (البحث، الانتقال، الحفظ، والتحديث) */
-        .control-panel {
+
+        /* زر نسخة الجوال في أقصى الشمال الشرقي (أعلى اليمين تماماً) */
+        .mobile-toggle-btn {
             position: absolute;
             top: 15px;
             right: 15px;
+            z-index: 3000;
+            background: #8e44ad !important;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: background 0.3s;
+        }
+        .mobile-toggle-btn:hover {
+            background: #732d91 !important;
+        }
+
+        /* لوحة التحكم العلوية (تم إزاحتها لليسار قليلاً لتفادي التداخل مع زر الجوال) */
+        .control-panel {
+            position: absolute;
+            top: 15px;
+            right: 145px;
             z-index: 1000;
             background: white;
             padding: 10px 15px;
@@ -35,6 +58,7 @@
             gap: 10px;
             align-items: center;
             flex-wrap: wrap;
+            transition: all 0.3s ease;
         }
         .control-panel input {
             padding: 6px 10px;
@@ -74,12 +98,6 @@
         }
         .profile-btn:hover {
             background: #2c3e50 !important;
-        }
-        .mobile-toggle-btn {
-            background: #8e44ad !important;
-        }
-        .mobile-toggle-btn:hover {
-            background: #732d91 !important;
         }
 
         /* لوحة الإحصائيات العلوية اليسرى */
@@ -538,7 +556,7 @@
             background: #219653;
         }
 
-        /* تخصيص وضع نسخة الجوال (Mobile Mode Layout) */
+        /* تخصيص وضع نسخة الجوال (تُفعل حصرياً عند الضغط على زر نسخة الجوال) */
         body.mobile-mode .control-panel {
             top: 5px; right: 5px; left: 5px; width: auto; flex-direction: column; align-items: stretch; padding: 8px;
         }
@@ -559,6 +577,9 @@
 </head>
 <body id="mainBody">
 
+    <!-- زر نسخة الجوال في أقصى الشمال الشرقي (أعلى اليمين) -->
+    <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
+
     <!-- لوحة التحكم العلوية -->
     <div class="control-panel">
         <input type="text" id="searchInput" placeholder="ابحث برقم أو اسم النقطة..." onkeyup="filterPoints()">
@@ -566,7 +587,6 @@
         <button class="goto-btn" onclick="goToPoint()">Go To 🎯</button>
         <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
         <button class="profile-btn" onclick="openProfileModal()">👤 الملف الشخصي</button>
-        <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
         
         <!-- أزرار رفع الملفات من الجهاز (GeoJSON و CSV) -->
         <input type="file" id="geoFileImport" accept=".geojson,.json" style="display:none;" onchange="importGeoJSONFile(event)">
@@ -883,7 +903,7 @@
             document.getElementById('profileModal').style.display = 'none';
         }
 
-        // تفعيل وضع نسخة الجوال
+        // تفعيل / إلغاء وضع نسخة الجوال عند الضغط على زر نسخة الجوال العلوي
         function toggleMobileView() {
             const body = document.getElementById('mainBody');
             body.classList.toggle('mobile-mode');
