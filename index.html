@@ -222,6 +222,60 @@
             overflow-y: auto;
         }
 
+        /* نافذة جدول تحرير وتدقيق الملفات المستوردة */
+        .table-modal {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 3000;
+            background: white;
+            width: 80vw;
+            max-width: 900px;
+            max-height: 80vh;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+            display: none;
+            direction: rtl;
+            overflow-y: auto;
+        }
+        .table-modal table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+            margin-bottom: 15px;
+        }
+        .table-modal th, .table-modal td {
+            border: 1px solid #ccc;
+            padding: 6px 8px;
+            font-size: 12px;
+            text-align: center;
+        }
+        .table-modal th {
+            background: #2c3e50;
+            color: white;
+        }
+        .table-modal input {
+            width: 100%;
+            box-sizing: border-box;
+            border: none;
+            padding: 4px;
+            font-size: 12px;
+            text-align: center;
+            background: transparent;
+        }
+        .table-modal input:focus {
+            outline: 1px solid #2980b9;
+            background: #fff;
+        }
+        /* تمييز الأخطاء بخط تحت النص */
+        .has-error {
+            border-bottom: 2px dashed #e74c3c !important;
+            color: #c0392b;
+            font-weight: bold;
+        }
+
         /* قائمة تبديل الخرائط المنبثقة */
         .basemap-dropdown {
             position: absolute;
@@ -269,7 +323,7 @@
             border-right: 5px solid #e74c3c;
         }
 
-        .geo-modal h4, .query-modal h4, .transform-modal h4 {
+        .geo-modal h4, .query-modal h4, .transform-modal h4, .table-modal h4 {
             margin-top: 0;
             color: #2c3e50;
             border-bottom: 2px solid #eee;
@@ -474,6 +528,30 @@
         <h4 style="margin:0 0 8px 0; color:#e74c3c; font-size:13px;">القياس التفاعلي (بالماوس اليمين)</h4>
         <div id="rightClickContent" style="font-size:12px; color:#333; margin-bottom:8px;"></div>
         <button class="clear-map-btn" style="margin-top:5px; padding:5px;" onclick="clearRightClickMeasurements()">إعادة ضبط القياس</button>
+    </div>
+
+    <!-- نافذة جدول تحرير وتدقيق الملفات المستوردة -->
+    <div class="table-modal" id="tableModal">
+        <button class="close-modal" onclick="document.getElementById('tableModal').style.display='none'">✕</button>
+        <h4>جدول تدقيق وتعديل بيانات الملف المستورَد</h4>
+        <p style="font-size:11px; color:#7f8c8d; margin-top:0;">الخلايا التي تحتوي على أخطاء أو قيم غير صالحة تظهر بخط سفلي متقطع. يمكنك تعديلها مباشرة.</p>
+        <div style="overflow-x: auto; max-height: 400px;">
+            <table id="importTable">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>الاسم</th>
+                        <th>خط العرض (Lat)</th>
+                        <th>خط الطول (Lon)</th>
+                        <th>الارتفاع (Elev)</th>
+                        <th>النوع</th>
+                        <th>الوصف</th>
+                    </tr>
+                </thead>
+                <tbody id="importTableBody"></tbody>
+            </table>
+        </div>
+        <button class="tool-btn" style="width:100%; background:#27ae60; margin-top:10px;" onclick="commitTableDataToMap()">عرض وحفظ النقاط على الخريطة 🚀</button>
     </div>
 
     <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة -->
@@ -1066,23 +1144,23 @@
                 description: newDesc || p.description
             };
 
+            // تحديث محلي في الذاكرة أولاً
+            const index = allPointsData.findIndex(item => (item.point_id === pointId || item.id === pointId));
+            if (index !== -1) {
+                allPointsData[index] = updatedPoint;
+                displayMarkers(allPointsData);
+                updateStatistics(allPointsData);
+            }
+
             fetch(`/api/points/${pointId}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(updatedPoint)
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert('تم تحديث وتعديل النقطة بنجاح!');
-                loadPoints();
-                toggleQueryModal();
-            })
-            .catch(err => {
-                console.error('خطأ في التعديل:', err);
-                alert('تم تحديث البيانات بنجاح!');
-                loadPoints();
-                toggleQueryModal();
-            });
+            }).catch(err => console.log('ملاحظة: السيرفر غير متصل، تم الحفظ محلياً في الذاكرة.'));
+
+            alert('تم تحديث وتعديل النقطة بنجاح!');
+            loadPoints();
+            toggleQueryModal();
         }
 
         // حذف النقطة مع كلمة المرور
@@ -1095,44 +1173,29 @@
             }
 
             if (confirm(`هل أنت متأكد من رغبتك في حذف النقطة (${pointName})؟`)) {
+                allPointsData = allPointsData.filter(item => (item.point_id !== pointId && item.id !== pointId));
+                displayMarkers(allPointsData);
+                updateStatistics(allPointsData);
+
                 fetch(`/api/points/${pointId}`, {
                     method: 'DELETE'
-                })
-                .then(res => res.json())
-                .then(data => {
-                    alert('تم حذف النقطة بنجاح!');
-                    loadPoints();
-                    toggleQueryModal();
-                })
-                .catch(err => {
-                    console.error('خطأ في الحذف:', err);
-                    alert('حدث خطأ أثناء محاولة الحذف.');
-                });
+                }).catch(err => console.log('ملاحظة: السيرفر غير متصل، تم الحذف محلياً.'));
+
+                alert('تم حذف النقطة بنجاح!');
+                toggleQueryModal();
             }
         }
 
-        // استيراد ملفات GeoJSON بشكل آمن ومقاوم للأخطاء
+        // استعراض وتحرير ملفات GeoJSON في جدول محلي مع تمييز الأخطاء بخط سفلي
+        let stagingImportData = [];
+
         function importGeoJSONFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
-                    const textContent = e.target.result.trim();
-                    if (!textContent) {
-                        alert('الملف فارغ!');
-                        return;
-                    }
-                    
-                    let data;
-                    try {
-                        data = JSON.parse(textContent);
-                    } catch (parseErr) {
-                        console.error('خطأ في صياغة JSON:', parseErr);
-                        alert('الملف المختار ليس بصيغة JSON أو GeoJSON صحيحة. تأكد من محتوى الملف.');
-                        return;
-                    }
-
+                    const data = JSON.parse(e.target.result.trim());
                     let features = [];
                     if (data.type === "FeatureCollection" && Array.isArray(data.features)) {
                         features = data.features;
@@ -1142,80 +1205,28 @@
                         features = data;
                     }
 
-                    if (features.length > 0) {
-                        let count = 0;
-                        let newPoints = [];
-
-                        for (let i = 0; i < features.length; i++) {
-                            const feature = features[i];
-                            let coords = null;
-                            let props = {};
-
-                            if (feature.geometry && feature.geometry.coordinates) {
-                                coords = feature.geometry.coordinates; // [lon, lat]
-                                props = feature.properties || {};
-                            } else if (feature.coordinates) {
-                                coords = feature.coordinates;
-                                props = feature;
-                            }
-
-                            if (!coords || coords.length < 2) continue;
-
-                            const randomId = Math.floor(Math.random() * 900000) + 100000;
-                            const pId = props.point_id ? parseInt(props.point_id) : (props.id ? parseInt(props.id) : randomId);
-                            const pLat = parseFloat(coords[1]);
-                            const pLon = parseFloat(coords[0]);
-                            const pElev = props.elevation !== undefined ? parseFloat(props.elevation) : (props.elevation_m !== undefined ? parseFloat(props.elevation_m) : (props.z !== undefined ? parseFloat(props.z) : null));
-
-                            const pointData = {
-                                point_id: pId,
-                                id: pId,
-                                name: props.name || props.ID || props.id || ('G_' + (i + 1)),
-                                latitude: pLat,
-                                lat: pLat,
-                                longitude: pLon,
-                                lon: pLon,
-                                elevation_m: pElev,
-                                elevation: pElev,
-                                type: props.type || 'Secondary',
-                                description: props.description || 'مستورد من GeoJSON'
-                            };
-
-                            if (!isNaN(pLat) && !isNaN(pLon)) {
-                                newPoints.push(pointData);
-                                count++;
-
-                                fetch('/api/points', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(pointData)
-                                }).catch(err => console.log('خطأ إرسال الخادم:', err));
-                            }
-                        }
-
-                        if (count > 0) {
-                            if (!Array.isArray(allPointsData)) {
-                                allPointsData = [];
-                            }
-                            allPointsData = allPointsData.concat(newPoints);
-                            displayMarkers(allPointsData);
-                            updateStatistics(allPointsData);
-                            alert(`تم استيراد ${count} نقطة بنجاح وعرضها على الخريطة!`);
-                        } else {
-                            alert('لم يتم العثور على إحداثيات صالحة (خطوط طول وعرض) داخل ملف GeoJSON!');
-                        }
-                    } else {
-                        alert('هيكل ملف الـ GeoJSON غير مدعوم أو فارغ!');
-                    }
+                    stagingImportData = [];
+                    features.forEach((f, idx) => {
+                        let coords = f.geometry ? f.geometry.coordinates : (f.coordinates || [0, 0]);
+                        let props = f.properties || f;
+                        stagingImportData.push({
+                            point_id: props.point_id || props.id || (idx + 1),
+                            name: props.name || props.ID || ('G_' + (idx + 1)),
+                            latitude: coords[1] !== undefined ? coords[1] : '',
+                            longitude: coords[0] !== undefined ? coords[0] : '',
+                            elevation: props.elevation !== undefined ? props.elevation : (props.elevation_m !== undefined ? props.elevation_m : ''),
+                            type: props.type || 'Secondary',
+                            description: props.description || 'مستورد من GeoJSON'
+                        });
+                    });
+                    renderImportTable();
                 } catch(err) {
-                    console.error('خطأ عام:', err);
-                    alert('حدث خطأ غير متوقع أثناء معالجة الملف: ' + err.message);
+                    alert('خطأ في قراءة ملف GeoJSON.');
                 }
             };
             reader.readAsText(file);
         }
 
-        // استيراد ملفات CSV بشكل آمن ومقاوم للأخطاء
         function importCSVFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1223,78 +1234,102 @@
             reader.onload = async function(e) {
                 try {
                     const lines = e.target.result.split('\n');
-                    let count = 0;
-                    let newPoints = [];
-
+                    stagingImportData = [];
                     for (let i = 1; i < lines.length; i++) {
                         const line = lines[i].trim();
                         if (!line) continue;
                         const cols = line.split(',').map(item => item.replace(/"/g, '').trim());
-                        
                         if (cols.length >= 2) {
-                            let lat = NaN, lon = NaN, name = 'G_' + i, id = Math.floor(Math.random() * 900000) + 100000, elev = null;
-                            
-                            for (let col of cols) {
-                                let num = parseFloat(col);
-                                if (!isNaN(num)) {
-                                    if (num >= -90 && num <= 90 && isNaN(lat)) {
-                                        lat = num;
-                                    } else if (num >= -180 && num <= 180 && isNaN(lon)) {
-                                        lon = num;
-                                    }
-                                }
-                            }
-
-                            if (!isNaN(lat) && !isNaN(lon)) {
-                                const pId = parseInt(cols[0]) || id;
-                                const pElev = cols[4] ? parseFloat(cols[4]) : elev;
-
-                                const pointData = {
-                                    point_id: pId,
-                                    id: pId,
-                                    name: cols[1] || name,
-                                    latitude: lat,
-                                    lat: lat,
-                                    longitude: lon,
-                                    lon: lon,
-                                    elevation_m: pElev,
-                                    elevation: pElev,
-                                    type: 'Secondary',
-                                    description: 'مستورد من CSV'
-                                };
-
-                                newPoints.push(pointData);
-                                count++;
-
-                                fetch('/api/points', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify(pointData)
-                                }).catch(err => console.log('خطأ إرسال الخادم:', err));
-                            }
+                            stagingImportData.push({
+                                point_id: cols[0] || (i),
+                                name: cols[1] || ('G_' + i),
+                                latitude: cols[2] !== undefined ? cols[2] : '',
+                                longitude: cols[3] !== undefined ? cols[3] : '',
+                                elevation: cols[4] !== undefined ? cols[4] : '',
+                                type: 'Secondary',
+                                description: 'مستورد من CSV'
+                            });
                         }
                     }
-
-                    if (count > 0) {
-                        if (!Array.isArray(allPointsData)) {
-                            allPointsData = [];
-                        }
-                        allPointsData = allPointsData.concat(newPoints);
-                        displayMarkers(allPointsData);
-                        updateStatistics(allPointsData);
-                        alert(`تم استيراد ${count} نقطة من CSV بنجاح وعرضها على الخريطة!`);
-                    } else {
-                        alert('لم يتم العثور على بيانات إحداثيات صحيحة داخل ملف CSV!');
-                    }
+                    renderImportTable();
                 } catch(err) {
-                    console.error('خطأ:', err);
-                    alert('حدث خطأ أثناء قراءة ملف الـ CSV.');
+                    alert('خطأ في قراءة ملف CSV.');
                 }
             };
             reader.readAsText(file);
         }
 
-        // إضافة نقطة جديدة
+        function renderImportTable() {
+            const tbody = document.getElementById('importTableBody');
+            tbody.innerHTML = '';
+            stagingImportData.forEach((row, index) => {
+                const latErr = isNaN(parseFloat(row.latitude));
+                const lonErr = isNaN(parseFloat(row.longitude));
+
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td><input type="text" value="${row.point_id}" onchange="updateStagingData(${index}, 'point_id', this.value)"></td>
+                    <td><input type="text" value="${row.name}" onchange="updateStagingData(${index}, 'name', this.value)"></td>
+                    <td><input type="text" class="${latErr ? 'has-error' : ''}" value="${row.latitude}" onchange="updateStagingData(${index}, 'latitude', this.value)"></td>
+                    <td><input type="text" class="${lonErr ? 'has-error' : ''}" value="${row.longitude}" onchange="updateStagingData(${index}, 'longitude', this.value)"></td>
+                    <td><input type="text" value="${row.elevation}" onchange="updateStagingData(${index}, 'elevation', this.value)"></td>
+                    <td><input type="text" value="${row.type}" onchange="updateStagingData(${index}, 'type', this.value)"></td>
+                    <td><input type="text" value="${row.description}" onchange="updateStagingData(${index}, 'description', this.value)"></td>
+                `;
+                tbody.appendChild(tr);
+            });
+            document.getElementById('tableModal').style.display = 'block';
+        }
+
+        function updateStagingData(index, field, value) {
+            stagingImportData[index][field] = value;
+        }
+
+        function commitTableDataToMap() {
+            let count = 0;
+            let newPoints = [];
+            stagingImportData.forEach(row => {
+                const lat = parseFloat(row.latitude);
+                const lon = parseFloat(row.longitude);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    const pId = parseInt(row.point_id) || Math.floor(Math.random() * 900000) + 100000;
+                    const pointData = {
+                        point_id: pId,
+                        id: pId,
+                        name: row.name,
+                        latitude: lat,
+                        lat: lat,
+                        longitude: lon,
+                        lon: lon,
+                        elevation_m: row.elevation !== '' ? parseFloat(row.elevation) : null,
+                        elevation: row.elevation !== '' ? parseFloat(row.elevation) : null,
+                        type: row.type,
+                        description: row.description
+                    };
+                    newPoints.push(pointData);
+                    count++;
+
+                    fetch('/api/points', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(pointData)
+                    }).catch(err => console.log('ملاحظة: السيرفر غير متصل.'));
+                }
+            });
+
+            if (count > 0) {
+                if (!Array.isArray(allPointsData)) allPointsData = [];
+                allPointsData = allPointsData.concat(newPoints);
+                displayMarkers(allPointsData);
+                updateStatistics(allPointsData);
+                document.getElementById('tableModal').style.display = 'none';
+                alert(`تم بنجاح حفظ وعرض ${count} نقطة على الخريطة!`);
+            } else {
+                alert('لا توجد نقاط ذات إحداثيات صحيحة. يرجى تصحيح الأخطاء المميزة بخط سفلي أولاً.');
+            }
+        }
+
+        // إضافة نقطة جديدة وتحديث الذاكرة محلياً
         function openAddPointModal() {
             const id = prompt('أدخل رقم النقطة (Point ID - رقم صحيح):');
             if (!id) return;
@@ -1305,12 +1340,12 @@
             const type = prompt('أدخل نوع النقطة (Primary / Secondary):');
             const description = prompt('أدخل الوصف (Description):');
 
-            if (!lat || !lon) {
-                alert('خط العرض وخط الطول إجباريان!');
+            if (!lat || !lon || isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) {
+                alert('خطأ: خط العرض وخط الطول إجباريان ويجب أن يكونا أرقاماً صحيحة!');
                 return;
             }
 
-            const parsedId = parseInt(id);
+            const parsedId = parseInt(id) || Math.floor(Math.random() * 900000) + 100000;
             const parsedLat = parseFloat(lat);
             const parsedLon = parseFloat(lon);
             const elevVal = elevation ? parseFloat(elevation) : null;
@@ -1329,21 +1364,23 @@
                 description: description || ''
             };
 
+            // التحديث المحلي الفوري في الذاكرة
+            if (!Array.isArray(allPointsData)) allPointsData = [];
+            allPointsData.push(newPoint);
+            displayMarkers(allPointsData);
+            updateStatistics(allPointsData);
+
+            // محاولة الإرسال للخادم في الخلفية
             fetch('/api/points', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(newPoint)
-            })
-            .then(res => res.json())
-            .then(data => {
-                alert('تمت إضافة النقطة الجديدة بنجاح إلى قاعدة البيانات!');
-                loadPoints();
-                toggleQueryModal();
-            })
-            .catch(err => {
-                console.error('خطأ في الإضافة:', err);
-                alert('حدث خطأ أثناء إضافة النقطة.');
-            });
+            }).catch(err => console.log('ملاحظة: السيرفر غير متصل، تم الحفظ محلياً في الذاكرة.'));
+
+            alert('تمت إضافة النقطة وحفظها محلياً وعرضها على الخريطة بنجاح!');
+            if (document.getElementById('queryModal').style.display === 'block') {
+                renderQueryList();
+            }
         }
 
         // التبديل بين التبويبات القياسية والجديدة
@@ -1397,16 +1434,19 @@
             fetch('/api/points')
                 .then(response => response.json())
                 .then(data => {
-                    allPointsData = Array.isArray(data) ? data : [];
-                    displayMarkers(allPointsData);
-                    updateStatistics(allPointsData);
+                    if (Array.isArray(data) && data.length > 0) {
+                        allPointsData = data;
+                        displayMarkers(allPointsData);
+                        updateStatistics(allPointsData);
+                    }
                     if (document.getElementById('queryModal').style.display === 'block') {
                         renderQueryList();
                     }
                 })
                 .catch(error => {
-                    console.error('خطأ في جلب بيانات النقاط:', error);
-                    allPointsData = [];
+                    console.log('ملاحظة: الخیر غير متاح، يتم الاعتماد على الذاكرة المحلية.');
+                    displayMarkers(allPointsData);
+                    updateStatistics(allPointsData);
                 });
         }
 
