@@ -41,7 +41,7 @@ app.get('/api/points', async (req, res) => {
     }
 });
 
-// 2. إضافة نقطة جديدة إلى قاعدة البيانات (POST)
+// 2. إضافة أو تحديث نقطة (POST - مدعوم بـ Upsert لمنع الأخطاء عند رفع الملفات المتكررة)
 app.post('/api/points', async (req, res) => {
     const { point_id, name, latitude, longitude, elevation_m, type, description } = req.body;
 
@@ -49,12 +49,19 @@ app.post('/api/points', async (req, res) => {
         const queryText = `
             INSERT INTO stations (point_id, name, latitude, longitude, elevation_m, type, description)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
+            ON CONFLICT (point_id) DO UPDATE 
+            SET name = EXCLUDED.name, 
+                latitude = EXCLUDED.latitude, 
+                longitude = EXCLUDED.longitude, 
+                elevation_m = EXCLUDED.elevation_m, 
+                type = EXCLUDED.type, 
+                description = EXCLUDED.description
             RETURNING *;
         `;
         const values = [point_id, name, latitude, longitude, elevation_m, type, description];
         
         const result = await pool.query(queryText, values);
-        console.log('➕ تم إضافة نقطة جديدة:', result.rows[0]);
+        console.log('➕ تم إضافة أو تحديث نقطة:', result.rows[0]);
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('خطأ أثناء إضافة النقطة:', err);
@@ -62,7 +69,34 @@ app.post('/api/points', async (req, res) => {
     }
 });
 
-// 3. حذف نقطة من قاعدة البيانات (DELETE)
+// 3. تعديل بيانات نقطة موجودة (PUT - مطلوب لخاصية التعديل في الواجهة)
+app.put('/api/points/:id', async (req, res) => {
+    const pointId = req.params.id;
+    const { name, latitude, longitude, elevation_m, type, description } = req.body;
+
+    try {
+        const queryText = `
+            UPDATE stations 
+            SET name = $1, latitude = $2, longitude = $3, elevation_m = $4, type = $5, description = $6
+            WHERE point_id = $7
+            RETURNING *;
+        `;
+        const values = [name, latitude, longitude, elevation_m, type, description, pointId];
+        const result = await pool.query(queryText, values);
+
+        if (result.rowCount === 0) {
+            return res.status(404).json({ error: 'النقطة غير موجودة لتعديلها' });
+        }
+
+        console.log(`✏️ تم تحديث بيانات النقطة رقم: ${pointId}`);
+        res.json(result.rows[0]);
+    } catch (err) {
+        console.error('خطأ أثناء تعديل النقطة:', err);
+        res.status(500).json({ error: 'حدث خطأ في الخادم أثناء تعديل النقطة' });
+    }
+});
+
+// 4. حذف نقطة من قاعدة البيانات (DELETE)
 app.delete('/api/points/:id', async (req, res) => {
     const pointId = req.params.id;
 
