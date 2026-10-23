@@ -976,7 +976,7 @@
         function renderQueryList() {
             const container = document.getElementById('queryPointsList');
             container.innerHTML = '';
-            if (allPointsData.length === 0) {
+            if (!Array.isArray(allPointsData) || allPointsData.length === 0) {
                 container.innerHTML = '<p style="text-align:center; color:#7f8c8d;">لا توجد نقاط مسجلة.</p>';
                 return;
             }
@@ -1144,7 +1144,6 @@
                                 newPoints.push(pointData);
                                 count++;
 
-                                // إرسال النقاط للخادم بصمت
                                 fetch('/api/points', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -1154,6 +1153,9 @@
                         }
 
                         if (count > 0) {
+                            if (!Array.isArray(allPointsData)) {
+                                allPointsData = [];
+                            }
                             allPointsData = allPointsData.concat(newPoints);
                             displayMarkers(allPointsData);
                             updateStatistics(allPointsData);
@@ -1172,7 +1174,7 @@
             reader.readAsText(file);
         }
 
-        // استيراد ملفات CSV بشكل مرن ومحدث
+        // استيراد ملفات CSV بشكل آمن ومقاوم للأخطاء
         function importCSVFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1191,7 +1193,6 @@
                         if (cols.length >= 2) {
                             let lat = NaN, lon = NaN, name = 'G_' + i, id = Math.floor(Math.random() * 900000) + 100000, elev = null;
                             
-                            // فحص الأعمدة تلقائياً لاستخراج الإحداثيات الجغرافية الصحيحة
                             for (let col of cols) {
                                 let num = parseFloat(col);
                                 if (!isNaN(num)) {
@@ -1227,6 +1228,9 @@
                     }
 
                     if (count > 0) {
+                        if (!Array.isArray(allPointsData)) {
+                            allPointsData = [];
+                        }
                         allPointsData = allPointsData.concat(newPoints);
                         displayMarkers(allPointsData);
                         updateStatistics(allPointsData);
@@ -1336,18 +1340,22 @@
             fetch('/api/points')
                 .then(response => response.json())
                 .then(data => {
-                    allPointsData = data;
-                    displayMarkers(data);
-                    updateStatistics(data);
+                    allPointsData = Array.isArray(data) ? data : [];
+                    displayMarkers(allPointsData);
+                    updateStatistics(allPointsData);
                     if (document.getElementById('queryModal').style.display === 'block') {
                         renderQueryList();
                     }
                 })
-                .catch(error => console.error('خطأ في جلب بيانات النقاط:', error));
+                .catch(error => {
+                    console.error('خطأ في جلب بيانات النقاط:', error);
+                    allPointsData = [];
+                });
         }
 
         // تحديث إحصائيات المشروع
         function updateStatistics(data) {
+            if (!Array.isArray(data)) data = [];
             const total = data.length;
             let primaryCount = 0;
             let secondaryCount = 0;
@@ -1385,6 +1393,7 @@
         function displayMarkers(data) {
             markersLayer.clearLayers();
             markersMap = {};
+            if (!Array.isArray(data)) return;
             data.forEach(point => {
                 const lat = parseFloat(point.latitude);
                 const lon = parseFloat(point.longitude);
@@ -1550,12 +1559,14 @@
             const buffered = turf.buffer(pointGeo, radius, {units: 'meters'});
 
             let countInside = 0;
-            allPointsData.forEach(p => {
-                const pGeo = turf.point([parseFloat(p.longitude), parseFloat(p.latitude)]);
-                if (turf.booleanPointInPolygon(pGeo, buffered)) {
-                    countInside++;
-                }
-            });
+            if (Array.isArray(allPointsData)) {
+                allPointsData.forEach(p => {
+                    const pGeo = turf.point([parseFloat(p.longitude), parseFloat(p.latitude)]);
+                    if (turf.booleanPointInPolygon(pGeo, buffered)) {
+                        countInside++;
+                    }
+                });
+            }
 
             const areaSqMeters = turf.area(buffered);
 
@@ -1799,6 +1810,7 @@
 
         function filterPoints() {
             const query = document.getElementById('searchInput').value.toLowerCase();
+            if (!Array.isArray(allPointsData)) return;
             const filtered = allPointsData.filter(point => {
                 const name = (point.name || '').toString().toLowerCase();
                 const id = (point.point_id || '').toString().toLowerCase();
@@ -1857,6 +1869,7 @@
         }
 
         function findPointById(query) {
+            if (!Array.isArray(allPointsData)) return null;
             return allPointsData.find(p => 
                 (p.name && p.name.toString().toLowerCase() === query.toLowerCase()) || 
                 (p.point_id && p.point_id.toString().toLowerCase() === query.toLowerCase())
