@@ -1080,7 +1080,7 @@
             }
         }
 
-        // استيراد ملفات GeoJSON من الجهاز وتخزينها (محدثة بمتابعة استجابة الخادم)
+        // استيراد ملفات GeoJSON بشكل مرن ومحدث
         function importGeoJSONFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1088,16 +1088,24 @@
             reader.onload = async function(e) {
                 try {
                     const data = JSON.parse(e.target.result);
+                    let features = [];
                     if (data.type === "FeatureCollection" && data.features) {
+                        features = data.features;
+                    } else if (data.type === "Feature") {
+                        features = [data];
+                    }
+
+                    if (features.length > 0) {
                         let count = 0;
-                        for (let i = 0; i < data.features.length; i++) {
-                            const feature = data.features[i];
-                            const coords = feature.geometry.coordinates;
+                        for (let i = 0; i < features.length; i++) {
+                            const feature = features[i];
+                            if (!feature.geometry || !feature.geometry.coordinates) continue;
+                            const coords = feature.geometry.coordinates; // [lon, lat]
                             const props = feature.properties || {};
                             
                             const pointData = {
                                 point_id: props.point_id ? parseInt(props.point_id) : (Math.floor(Math.random() * 900000) + 100000),
-                                name: props.name || props.ID || ('G_' + (i + 1)),
+                                name: props.name || props.ID || props.id || ('G_' + (i + 1)),
                                 latitude: parseFloat(coords[1]),
                                 longitude: parseFloat(coords[0]),
                                 elevation_m: props.elevation !== undefined ? parseFloat(props.elevation) : (props.elevation_m !== undefined ? parseFloat(props.elevation_m) : null),
@@ -1118,20 +1126,20 @@
                                 console.error('خطأ من الخادم أثناء حفظ النقطة:', errText);
                             }
                         }
-                        alert(`تم استيراد ${count} نقطة بنجاح وحفظها في قاعدة البيانات!`);
+                        alert(`تم استيراد ${count} نقطة بنجاح وحفظها في قاعدة البيانات!`);[span_0](start_span)[span_0](end_span)
                         loadPoints();
                     } else {
-                        alert('صيغة ملف GeoJSON غير صحيحة!');
+                        alert('لم يتم العثور على نقاط صالحة داخل ملف GeoJSON!');
                     }
                 } catch(err) {
                     console.error('خطأ:', err);
-                    alert('حدث خطأ أثناء قراءة ملف الـ GeoJSON.');
+                    alert('حدث خطأ أثناء قراءة وتحليل ملف الـ GeoJSON.');
                 }
             };
             reader.readAsText(file);
         }
 
-        // استيراد ملفات CSV من الجهاز وتخزينها (محدثة بمتابعة استجابة الخادم)
+        // استيراد ملفات CSV بشكل مرن ومحدث
         function importCSVFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1141,20 +1149,36 @@
                     const lines = e.target.result.split('\n');
                     let count = 0;
                     for (let i = 1; i < lines.length; i++) {
-                        const line = lines[i].trim();
+                        const line = lines.string ? lines[i].trim() : lines[i].trim();
                         if (!line) continue;
                         const cols = line.split(',').map(item => item.replace(/"/g, '').trim());
-                        if (cols.length >= 4) {
-                            const pointData = {
-                                point_id: parseInt(cols[0]) || (Math.floor(Math.random() * 900000) + 100000),
-                                name: cols[1] || ('G_' + i),
-                                latitude: parseFloat(cols[2]),
-                                longitude: parseFloat(cols[3]),
-                                elevation_m: cols[4] ? parseFloat(cols[4]) : null,
-                                type: cols[5] || 'Secondary',
-                                description: cols[6] || 'مستورد من CSV'
-                            };
-                            if (!isNaN(pointData.latitude) && !isNaN(pointData.longitude)) {
+                        
+                        if (cols.length >= 2) {
+                            let lat = NaN, lon = NaN, name = 'G_' + i, id = Math.floor(Math.random() * 900000) + 100000, elev = null;
+                            
+                            // فحص الأعمدة تلقائياً لاستخراج الإحداثيات الجغرافية الصحيحة
+                            for (let col of cols) {
+                                let num = parseFloat(col);
+                                if (!isNaN(num)) {
+                                    if (num >= -90 && num <= 90 && isNaN(lat)) {
+                                        lat = num;
+                                    } else if (num >= -180 && num <= 180 && isNaN(lon)) {
+                                        lon = num;
+                                    }
+                                }
+                            }
+
+                            if (!isNaN(lat) && !isNaN(lon)) {
+                                const pointData = {
+                                    point_id: parseInt(cols[0]) || id,
+                                    name: cols[1] || name,
+                                    latitude: lat,
+                                    longitude: lon,
+                                    elevation_m: cols[4] ? parseFloat(cols[4]) : elev,
+                                    type: 'Secondary',
+                                    description: 'مستورد من CSV'
+                                };
+
                                 const response = await fetch('/api/points', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -1169,7 +1193,7 @@
                             }
                         }
                     }
-                    alert(`تم استيراد ${count} نقطة من CSV وحفظها بنجاح!`);
+                    alert(`تم استيراد ${count} نقطة من CSV وحفظها بنجاح!`);[span_1](start_span)[span_1](end_span)
                     loadPoints();
                 } catch(err) {
                     console.error('خطأ:', err);
