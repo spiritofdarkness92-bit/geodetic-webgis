@@ -1,21 +1,24 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // تفعيل Cors واستقبال بيانات JSON من الواجهة الأمامية
 app.use(cors());
 app.use(express.json());
 
-// إعداد الاتصال بقاعدة بيانات PostgreSQL
+// قراءة وعرض ملفات المشروع (مثل index.html و الملفات الجغرافية)
+app.use(express.static(__dirname));
+
+// إعداد الاتصال بقاعدة بيانات PostgreSQL عبر Supabase ومنصة Render
 const pool = new Pool({
-    user: 'postgres',
-    host: 'localhost',
-    database: 'geodetic_db',
-    password: '62936015747', // كلمة المرور الخاصة بك
-    port: 5432,
+    connectionString: process.env.DATABASE_URL,
+    ssl: {
+        rejectUnauthorized: false // ضروري جداً للاتصال بقواعد بيانات Supabase من منصة سحابية
+    }
 });
 
 // التحقق من الاتصال بقاعدة البيانات
@@ -81,5 +84,5 @@ app.delete('/api/points/:id', async (req, res) => {
 
 // تشغيل الخادم
 app.listen(port, () => {
-    console.log(`🚀 الخادم يعمل بنجاح على الرابط: http://localhost:${port}`);
+    console.log(`🚀 الخادم يعمل بنجاح على المنفذ: ${port}`);
 });
