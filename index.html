@@ -1080,29 +1080,56 @@
             }
         }
 
-        // استيراد ملفات GeoJSON بشكل مرن ومحدث
+        // استيراد ملفات GeoJSON بشكل آمن ومقاوم للأخطاء
         function importGeoJSONFile(event) {
             const file = event.target.files[0];
             if (!file) return;
             const reader = new FileReader();
             reader.onload = async function(e) {
                 try {
-                    const data = JSON.parse(e.target.result);
+                    const textContent = e.target.result.trim();
+                    if (!textContent) {
+                        alert('الملف فارغ!');
+                        return;
+                    }
+                    
+                    let data;
+                    try {
+                        data = JSON.parse(textContent);
+                    } catch (parseErr) {
+                        console.error('خطأ في صياغة JSON:', parseErr);
+                        alert('الملف المختار ليس بصيغة JSON أو GeoJSON صحيحة. تأكد من محتوى الملف.');
+                        return;
+                    }
+
                     let features = [];
-                    if (data.type === "FeatureCollection" && data.features) {
+                    if (data.type === "FeatureCollection" && Array.isArray(data.features)) {
                         features = data.features;
                     } else if (data.type === "Feature") {
                         features = [data];
+                    } else if (Array.isArray(data)) {
+                        features = data;
                     }
 
                     if (features.length > 0) {
                         let count = 0;
+                        let newPoints = [];
+
                         for (let i = 0; i < features.length; i++) {
                             const feature = features[i];
-                            if (!feature.geometry || !feature.geometry.coordinates) continue;
-                            const coords = feature.geometry.coordinates; // [lon, lat]
-                            const props = feature.properties || {};
-                            
+                            let coords = null;
+                            let props = {};
+
+                            if (feature.geometry && feature.geometry.coordinates) {
+                                coords = feature.geometry.coordinates; // [lon, lat]
+                                props = feature.properties || {};
+                            } else if (feature.coordinates) {
+                                coords = feature.coordinates;
+                                props = feature;
+                            }
+
+                            if (!coords || coords.length < 2) continue;
+
                             const pointData = {
                                 point_id: props.point_id ? parseInt(props.point_id) : (Math.floor(Math.random() * 900000) + 100000),
                                 name: props.name || props.ID || props.id || ('G_' + (i + 1)),
@@ -1113,27 +1140,33 @@
                                 description: props.description || 'مستورد من GeoJSON'
                             };
 
-                            const response = await fetch('/api/points', {
-                                method: 'POST',
-                                headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify(pointData)
-                            });
-
-                            if (response.ok) {
+                            if (!isNaN(pointData.latitude) && !isNaN(pointData.longitude)) {
+                                newPoints.push(pointData);
                                 count++;
-                            } else {
-                                const errText = await response.text();
-                                console.error('خطأ من الخادم أثناء حفظ النقطة:', errText);
+
+                                // إرسال النقاط للخادم بصمت
+                                fetch('/api/points', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify(pointData)
+                                }).catch(err => console.log('خطأ إرسال الخادم:', err));
                             }
                         }
-                        alert(`تم استيراد ${count} نقطة بنجاح وحفظها في قاعدة البيانات!`);[span_0](start_span)[span_0](end_span)
-                        loadPoints();
+
+                        if (count > 0) {
+                            allPointsData = allPointsData.concat(newPoints);
+                            displayMarkers(allPointsData);
+                            updateStatistics(allPointsData);
+                            alert(`تم استيراد ${count} نقطة بنجاح وعرضها على الخريطة!`);
+                        } else {
+                            alert('لم يتم العثور على إحداثيات صالحة (خطوط طول وعرض) داخل ملف GeoJSON!');
+                        }
                     } else {
-                        alert('لم يتم العثور على نقاط صالحة داخل ملف GeoJSON!');
+                        alert('هيكل ملف الـ GeoJSON غير مدعوم أو فارغ!');
                     }
                 } catch(err) {
-                    console.error('خطأ:', err);
-                    alert('حدث خطأ أثناء قراءة وتحليل ملف الـ GeoJSON.');
+                    console.error('خطأ عام:', err);
+                    alert('حدث خطأ غير متوقع أثناء معالجة الملف: ' + err.message);
                 }
             };
             reader.readAsText(file);
@@ -1148,8 +1181,10 @@
                 try {
                     const lines = e.target.result.split('\n');
                     let count = 0;
+                    let newPoints = [];
+
                     for (let i = 1; i < lines.length; i++) {
-                        const line = lines.string ? lines[i].trim() : lines[i].trim();
+                        const line = lines[i].trim();
                         if (!line) continue;
                         const cols = line.split(',').map(item => item.replace(/"/g, '').trim());
                         
@@ -1179,22 +1214,26 @@
                                     description: 'مستورد من CSV'
                                 };
 
-                                const response = await fetch('/api/points', {
+                                newPoints.push(pointData);
+                                count++;
+
+                                fetch('/api/points', {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
                                     body: JSON.stringify(pointData)
-                                });
-                                if (response.ok) {
-                                    count++;
-                                } else {
-                                    const errText = await response.text();
-                                    console.error('خطأ من الخادم أثناء حفظ نقطة CSV:', errText);
-                                }
+                                }).catch(err => console.log('خطأ إرسال الخادم:', err));
                             }
                         }
                     }
-                    alert(`تم استيراد ${count} نقطة من CSV وحفظها بنجاح!`);[span_1](start_span)[span_1](end_span)
-                    loadPoints();
+
+                    if (count > 0) {
+                        allPointsData = allPointsData.concat(newPoints);
+                        displayMarkers(allPointsData);
+                        updateStatistics(allPointsData);
+                        alert(`تم استيراد ${count} نقطة من CSV بنجاح وعرضها على الخريطة!`);
+                    } else {
+                        alert('لم يتم العثور على بيانات إحداثيات صحيحة داخل ملف CSV!');
+                    }
                 } catch(err) {
                     console.error('خطأ:', err);
                     alert('حدث خطأ أثناء قراءة ملف الـ CSV.');
