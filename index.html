@@ -1,0 +1,1726 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام نقاط التحكم الجيوديسية التفاعلي</title>
+    <!-- مكتبة Leaflet للخرائط التفاعلية -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <!-- مكتبة التحليلات المكانية Turf.js لحساب المساحات والمسافات بدقة هندسية -->
+    <script src="https://unpkg.com/@turf/turf@6/turf.min.js"></script>
+    <!-- مكتبة الرسم البياني Chart.js للقطاع الطولي للارتفاعات -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: Tahoma, sans-serif;
+        }
+        #map {
+            width: 100vw;
+            height: 100vh;
+        }
+        /* لوحة التحكم العلوية (البحث، الانتقال، الحفظ، والتحديث) */
+        .control-panel {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            z-index: 1000;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .control-panel input {
+            padding: 6px 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+            width: 130px;
+        }
+        .control-panel button, .tool-btn {
+            padding: 6px 12px;
+            background: #27ae60;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .control-panel button:hover, .tool-btn:hover {
+            background: #219653;
+        }
+        .goto-btn {
+            background: #2980b9 !important;
+        }
+        .goto-btn:hover {
+            background: #1f618d !important;
+        }
+        .save-btn {
+            background: #d35400 !important;
+        }
+        .save-btn:hover {
+            background: #ba4a00 !important;
+        }
+
+        /* لوحة الإحصائيات العلوية اليسرى */
+        .stats-panel {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 1000;
+            background: white;
+            padding: 10px 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            direction: rtl;
+            font-size: 12px;
+            color: #2c3e50;
+            width: 180px;
+        }
+        .stats-panel h4 {
+            margin: 0 0 8px 0;
+            font-size: 13px;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 5px;
+            color: #27ae60;
+        }
+        .stats-panel div {
+            margin-bottom: 4px;
+            font-weight: bold;
+        }
+
+        /* الأزرار العائمة على اليمين */
+        .geo-tool-icon-btn {
+            position: absolute;
+            top: 75px;
+            right: 15px;
+            z-index: 1000;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+        .geo-tool-icon-btn:hover {
+            background: #34495e;
+        }
+
+        .transform-tool-btn {
+            position: absolute;
+            top: 75px;
+            right: 190px;
+            z-index: 1000;
+            background: #d35400;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+        .transform-tool-btn:hover {
+            background: #ba4a00;
+        }
+
+        .query-tool-btn {
+            position: absolute;
+            top: 130px;
+            right: 15px;
+            z-index: 1000;
+            background: #8e44ad;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+        .query-tool-btn:hover {
+            background: #732d91;
+        }
+
+        .basemap-tool-btn {
+            position: absolute;
+            top: 130px;
+            right: 145px;
+            z-index: 1000;
+            background: #16a085;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-weight: bold;
+        }
+        .basemap-tool-btn:hover {
+            background: #138d75;
+        }
+
+        /* نافذة أدوات القياس المنبثقة */
+        .geo-modal {
+            position: absolute;
+            top: 185px;
+            right: 15px;
+            z-index: 2000;
+            background: white;
+            width: 330px;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            direction: rtl;
+            max-height: 480px;
+            overflow-y: auto;
+        }
+
+        /* نافذة تحويل الإحداثيات المنبثقة */
+        .transform-modal {
+            position: absolute;
+            top: 135px;
+            right: 190px;
+            z-index: 2000;
+            background: white;
+            width: 330px;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            direction: rtl;
+        }
+
+        /* نافذة الاستعلام وإدارة النقاط المنبثقة */
+        .query-modal {
+            position: absolute;
+            top: 185px;
+            right: 15px;
+            z-index: 2000;
+            background: white;
+            width: 350px;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            direction: rtl;
+            max-height: 500px;
+            overflow-y: auto;
+        }
+
+        /* قائمة تبديل الخرائط المنبثقة */
+        .basemap-dropdown {
+            position: absolute;
+            top: 185px;
+            right: 145px;
+            z-index: 2000;
+            background: white;
+            width: 180px;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            direction: rtl;
+        }
+        .basemap-dropdown button {
+            width: 100%;
+            padding: 6px;
+            margin-bottom: 5px;
+            background: #f0f3f4;
+            border: 1px solid #d5dbdb;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: bold;
+            color: #2c3e50;
+            text-align: right;
+        }
+        .basemap-dropdown button:hover {
+            background: #d5dbdb;
+        }
+
+        /* صندوق نتائج القياس التفاعلي بالماوس اليمين */
+        .rightclick-measure-box {
+            position: absolute;
+            bottom: 25px;
+            left: 25px;
+            z-index: 2000;
+            background: white;
+            width: 300px;
+            padding: 12px 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            direction: rtl;
+            border-right: 5px solid #e74c3c;
+        }
+
+        .geo-modal h4, .query-modal h4, .transform-modal h4 {
+            margin-top: 0;
+            color: #2c3e50;
+            border-bottom: 2px solid #eee;
+            padding-bottom: 8px;
+            font-size: 14px;
+        }
+        .tabs {
+            display: flex;
+            gap: 2px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+        }
+        .tabs button {
+            flex: 1;
+            padding: 5px 2px;
+            background: #ecf0f1;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 10px;
+            font-weight: bold;
+            color: #333;
+        }
+        .tabs button.active {
+            background: #2980b9;
+            color: white;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .form-group {
+            margin-bottom: 10px;
+        }
+        .form-group label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 3px;
+            color: #555;
+            font-weight: bold;
+        }
+        .form-group input, .form-group select {
+            width: 100%;
+            padding: 6px;
+            box-sizing: border-box;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 13px;
+        }
+        .result-box {
+            margin-top: 10px;
+            padding: 8px;
+            background: #e8f8f5;
+            border: 1px solid #a3e4d7;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #117a65;
+            font-weight: bold;
+        }
+        .close-modal {
+            float: left;
+            background: none;
+            border: none;
+            color: #e74c3c;
+            font-weight: bold;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .clear-map-btn {
+            width: 100%;
+            margin-top: 12px;
+            padding: 8px;
+            background: #e67e22;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: bold;
+            transition: background 0.3s;
+        }
+        .clear-map-btn:hover {
+            background: #d35400;
+        }
+
+        /* تنسيق قائمة الاستعلام والنقاط */
+        .point-card {
+            background: #f8f9f9;
+            border: 1px solid #d5dbdb;
+            border-radius: 6px;
+            padding: 8px 10px;
+            margin-bottom: 8px;
+        }
+        .point-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            font-weight: bold;
+            color: #2c3e50;
+            font-size: 13px;
+        }
+        .point-details {
+            display: none;
+            margin-top: 8px;
+            padding-top: 8px;
+            border-top: 1px dashed #ccc;
+            font-size: 12px;
+            color: #555;
+        }
+        .delete-btn {
+            background: #e74c3c;
+            color: white;
+            border: none;
+            padding: 4px 8px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .delete-btn:hover {
+            background: #c0392b;
+        }
+        .add-btn {
+            width: 100%;
+            background: #27ae60;
+            color: white;
+            border: none;
+            padding: 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            cursor: pointer;
+            margin-bottom: 10px;
+            font-size: 13px;
+        }
+        .add-btn:hover {
+            background: #219653;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- لوحة التحكم العلوية -->
+    <div class="control-panel">
+        <input type="text" id="searchInput" placeholder="ابحث برقم أو اسم النقطة..." onkeyup="filterPoints()">
+        <input type="text" id="gotoInput" placeholder="انتقل إلى نقطة..." onkeypress="handleGotoEnter(event)">
+        <button class="goto-btn" onclick="goToPoint()">Go To 🎯</button>
+        <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
+        <button onclick="refreshData()">تحديث 🔄</button>
+    </div>
+
+    <!-- لوحة إحصائيات المشروع (العلوية اليسرى) -->
+    <div class="stats-panel" id="statsPanel">
+        <h4>إحصائيات المشروع 📊</h4>
+        <div>إجمالي النقاط: <span id="statTotal">0</span></div>
+        <div>رئيسية (Primary): <span id="statPrimary">0</span></div>
+        <div>ثانوية (Secondary): <span id="statSecondary">0</span></div>
+        <div>أعلى ارتفاع (Z): <span id="statMaxZ">-</span></div>
+        <div>أقل ارتفاع (Z): <span id="statMinZ">-</span></div>
+    </div>
+
+    <!-- الأزرار العائمة -->
+    <button class="geo-tool-icon-btn" onclick="toggleGeoModal()">📐📏 أدوات القياس الهندسية</button>
+    <button class="transform-tool-btn" onclick="toggleTransformModal()">🌐 تحويل الإحداثيات</button>
+    <button class="query-tool-btn" onclick="toggleQueryModal()">🔍 استعلام النقاط</button>
+    <button class="basemap-tool-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
+
+    <!-- قائمة تبديل خرائط الأساس -->
+    <div class="basemap-dropdown" id="basemapDropdown">
+        <button onclick="changeBasemap('streets')">شوارع Esri</button>
+        <button onclick="changeBasemap('satellite')">قمر صناعي</button>
+        <button onclick="changeBasemap('topo')">خريطة طوبوغرافية</button>
+    </div>
+
+    <!-- صندوق نتائج القياس التفاعلي بالماوس اليمين -->
+    <div class="rightclick-measure-box" id="rightClickBox">
+        <button class="close-modal" onclick="clearRightClickMeasurements()">✕</button>
+        <h4 style="margin:0 0 8px 0; color:#e74c3c; font-size:13px;">القياس التفاعلي (بالماوس اليمين)</h4>
+        <div id="rightClickContent" style="font-size:12px; color:#333; margin-bottom:8px;"></div>
+        <button class="clear-map-btn" style="margin-top:5px; padding:5px;" onclick="clearRightClickMeasurements()">إعادة ضبط القياس</button>
+    </div>
+
+    <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة -->
+    <div class="geo-modal" id="geoModal">
+        <button class="close-modal" onclick="toggleGeoModal()">✕</button>
+        <h4>أدوات الحساب الجيوديسي</h4>
+        
+        <div class="tabs">
+            <button id="tabDistBtn" class="active" onclick="switchTab('distance')">المسافة</button>
+            <button id="tabAreaBtn" onclick="switchTab('area')">المساحة</button>
+            <button id="tabAzimuthBtn" onclick="switchTab('azimuth')">الانحراف</button>
+            <button id="tabBufferBtn" onclick="switchTab('buffer')">الحماية</button>
+            <button id="tabProfileBtn" onclick="switchTab('profile')">القطاع</button>
+            <button id="tabNavBtn" onclick="switchTab('nav')">التوجيه</button>
+        </div>
+
+        <!-- حساب المسافة -->
+        <div id="distanceTab" class="tab-content active">
+            <div class="form-group">
+                <label>رقم أو اسم نقطة البداية:</label>
+                <input type="text" id="startPoint" placeholder="مثال: G01" onkeypress="handleDistEnter(event, 'start')">
+            </div>
+            <div class="form-group">
+                <label>رقم أو اسم نقطة النهاية:</label>
+                <input type="text" id="endPoint" placeholder="مثال: G02" onkeypress="handleDistEnter(event, 'end')">
+            </div>
+            <button class="tool-btn" style="width:100%;" onclick="calculateDistance()">احسب المسافة</button>
+            <div id="distanceResult" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- حساب المساحة -->
+        <div id="areaTab" class="tab-content">
+            <div id="areaPointsContainer">
+                <div class="form-group">
+                    <label>رقم النقطة الأولى:</label>
+                    <input type="text" class="area-point-input" placeholder="مثال: G01" onkeypress="handleAreaEnter(event)">
+                </div>
+                <div class="form-group">
+                    <label>رقم النقطة الثانية:</label>
+                    <input type="text" class="area-point-input" placeholder="مثال: G02" onkeypress="handleAreaEnter(event)">
+                </div>
+                <div class="form-group">
+                    <label>رقم النقطة الثالثة:</label>
+                    <input type="text" class="area-point-input" placeholder="مثال: G03" onkeypress="handleAreaEnter(event)">
+                </div>
+            </div>
+            <button type="button" onclick="addAreaPointInput()" style="background:#f39c12; color:white; border:none; padding:5px 10px; border-radius:4px; cursor:pointer; font-size:11px; margin-bottom:10px; width:100%; font-weight:bold;">+ إضافة نقطة أخرى</button>
+            <button class="tool-btn" style="width:100%;" onclick="calculateArea()">احسب المساحة</button>
+            <div id="areaResult" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- حساب الانحراف والاتجاه (Azimuth & Bearing) -->
+        <div id="azimuthTab" class="tab-content">
+            <div class="form-group">
+                <label>رقم أو اسم نقطة البداية:</label>
+                <input type="text" id="azimuthStart" placeholder="مثال: G01">
+            </div>
+            <div class="form-group">
+                <label>رقم أو اسم نقطة النهاية:</label>
+                <input type="text" id="azimuthEnd" placeholder="مثال: G02">
+            </div>
+            <button class="tool-btn" style="width:100%; background:#2980b9;" onclick="calculateAzimuth()">حساب الانحراف والاتجاه</button>
+            <div id="azimuthResult" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- رسم نطاق الحماية Buffer -->
+        <div id="bufferTab" class="tab-content">
+            <div class="form-group">
+                <label>رقم أو اسم النقطة المركزية:</label>
+                <input type="text" id="bufferPoint" placeholder="مثال: G01">
+            </div>
+            <div class="form-group">
+                <label>نصف القطر (بالأمتار):</label>
+                <input type="number" id="bufferRadius" placeholder="مثال: 500" value="500">
+            </div>
+            <button class="tool-btn" style="width:100%; background:#8e44ad;" onclick="calculateBuffer()">رسم وحساب نطاق الحماية</button>
+            <div id="bufferResult" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- القطاع الطولي للارتفاعات وحساب الميل (Slope & Profile) -->
+        <div id="profileTab" class="tab-content">
+            <div class="form-group">
+                <label>رقم أو اسم نقطة البداية:</label>
+                <input type="text" id="profileStart" placeholder="مثال: G01">
+            </div>
+            <div class="form-group">
+                <label>رقم أو اسم نقطة النهاية:</label>
+                <input type="text" id="profileEnd" placeholder="مثال: G02">
+            </div>
+            <button class="tool-btn" style="width:100%; background:#e67e22;" onclick="calculateProfile()">حساب الميل والقطاع الطولي</button>
+            <div id="profileResult" class="result-box" style="display:none;"></div>
+            <div style="margin-top: 10px; background: #fff; padding: 5px; border-radius: 4px; display: none;" id="chartContainer">
+                <canvas id="profileChart" width="290" height="160"></canvas>
+            </div>
+        </div>
+
+        <!-- أداة التوجيه الميداني المباشر (Geodetic Navigation & Compass) -->
+        <div id="navTab" class="tab-content">
+            <div class="form-group">
+                <label>رقم أو اسم نقطة التحكم المستهدفة:</label>
+                <input type="text" id="navTargetPoint" placeholder="مثال: G01">
+            </div>
+            <button class="tool-btn" id="navToggleBtn" style="width:100%; background:#16a085;" onclick="toggleLiveGPSNav()">بدء التوجيه الميداني 🛰️</button>
+            <div id="navResult" class="result-box" style="display:none;"></div>
+        </div>
+
+        <button class="clear-map-btn" onclick="clearMapMeasurements()">تحديث الخريطة</button>
+    </div>
+
+    <!-- نافذة تحويل الإحداثيات المنبثقة -->
+    <div class="transform-modal" id="transformModal">
+        <button class="close-modal" onclick="toggleTransformModal()">✕</button>
+        <h4>نظام تحويل الإحداثيات</h4>
+        
+        <div class="tabs">
+            <button id="tabTrans1Btn" class="active" onclick="switchTransformTab('geo2utm')">جغرافي ➔ UTM</button>
+            <button id="tabTrans2Btn" onclick="switchTransformTab('utm2geo')">UTM ➔ جغرافي</button>
+        </div>
+
+        <!-- التحويل من Lat/Long إلى UTM -->
+        <div id="geo2utmTab" class="tab-content active">
+            <div class="form-group">
+                <label>اختر نقطة مسجلة (اختياري):</label>
+                <input type="text" id="transPointInput" placeholder="مثال: G01 أو 1" oninput="autofillPointForTransform()">
+            </div>
+            <div class="form-group">
+                <label>خط العرض (Latitude):</label>
+                <input type="number" id="transLat" step="any" placeholder="مثال: 26.82">
+            </div>
+            <div class="form-group">
+                <label>خط الطول (Longitude):</label>
+                <input type="number" id="transLon" step="any" placeholder="مثال: 30.80">
+            </div>
+            <button class="tool-btn" style="width:100%; background:#d35400;" onclick="convertLatLonToUTM()">تحويل إلى UTM</button>
+            <div id="geo2utmResult" class="result-box" style="display:none;"></div>
+        </div>
+
+        <!-- التحويل من UTM إلى Lat/Long -->
+        <div id="utm2geoTab" class="tab-content">
+            <div class="form-group">
+                <label>الشرقيات (Easting - X):</label>
+                <input type="number" id="transEasting" step="any" placeholder="مثال: 500000">
+            </div>
+            <div class="form-group">
+                <label>الشماليات (Northing - Y):</label>
+                <input type="number" id="transNorthing" step="any" placeholder="مثال: 2966000">
+            </div>
+            <div class="form-group">
+                <label>رقم النطاق (UTM Zone):</label>
+                <input type="number" id="transZone" placeholder="مثال: 36">
+            </div>
+            <div class="form-group">
+                <label>نصف الكرة (Hemisphere):</label>
+                <select id="transHemisphere">
+                    <option value="N">شمالي (Northern Hemisphere - N)</option>
+                    <option value="S">جنوبي (Southern Hemisphere - S)</option>
+                </select>
+            </div>
+            <button class="tool-btn" style="width:100%; background:#d35400;" onclick="convertUTMToLatLon()">تحويل إلى جغرافي</button>
+            <div id="utm2geoResult" class="result-box" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- نافذة استعلام النقاط المنبثقة -->
+    <div class="query-modal" id="queryModal">
+        <button class="close-modal" onclick="toggleQueryModal()">✕</button>
+        <h4>استعلام وإدارة النقاط</h4>
+        <button class="add-btn" onclick="openAddPointModal()">+ إضافة نقطة جديدة</button>
+        <div id="queryPointsList"></div>
+    </div>
+
+    <div id="map"></div>
+
+    <!-- استدعاء مكتبة Leaflet البرمجية -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // إنشاء الخريطة وتحديد مركز العرض ومستوى التقريب
+        const map = L.map('map').setView([26.8206, 30.8025], 6);
+
+        // طبقات خريطة الأساس المختلفة
+        const baseLayers = {
+            streets: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+            satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
+            topo: L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', { maxZoom: 17 })
+        };
+
+        let currentTileLayer = baseLayers.streets.addTo(map);
+
+        // أيقونات العلامات (أخضر للرئيسية Primary، أزرق للثانوية Secondary، وأحمر للتحديد)
+        const greenIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const blueIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        const redIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        // أيقونة موقع المستخدم الميداني GPS
+        const userGpsIcon = L.icon({
+            iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
+            shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+            iconSize: [25, 41],
+            iconAnchor: [12, 41],
+            popupAnchor: [1, -34],
+            shadowSize: [41, 41]
+        });
+
+        let markersLayer = L.layerGroup().addTo(map);
+        let allPointsData = [];
+        let measurementLayer = L.layerGroup().addTo(map);
+        let markersMap = {};
+        let profileChartInstance = null;
+
+        // متغيرات التوجيه الميداني GPS
+        let gpsWatchId = null;
+        let userGpsMarker = null;
+        let isNavigating = false;
+
+        // متغيرات القياس التفاعلي بالماوس اليمين
+        let rightClickSelectedPoints = [];
+
+        // تبديل ظهور قائمة خرائط الأساس
+        function toggleBasemapDropdown() {
+            const drop = document.getElementById('basemapDropdown');
+            drop.style.display = drop.style.display === 'block' ? 'none' : 'block';
+        }
+
+        function changeBasemap(type) {
+            map.removeLayer(currentTileLayer);
+            currentTileLayer = baseLayers[type].addTo(map);
+            document.getElementById('basemapDropdown').style.display = 'none';
+        }
+
+        // فتح وإغلاق نافذة القياسات
+        function toggleGeoModal() {
+            const modal = document.getElementById('geoModal');
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+            document.getElementById('queryModal').style.display = 'none';
+            document.getElementById('transformModal').style.display = 'none';
+            document.getElementById('basemapDropdown').style.display = 'none';
+        }
+
+        // فتح وإغلاق نافذة تحويل الإحداثيات
+        function toggleTransformModal() {
+            const modal = document.getElementById('transformModal');
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+            document.getElementById('geoModal').style.display = 'none';
+            document.getElementById('queryModal').style.display = 'none';
+            document.getElementById('basemapDropdown').style.display = 'none';
+        }
+
+        // تبديل تبويبات التحويل
+        function switchTransformTab(tabName) {
+            if (tabName === 'geo2utm') {
+                document.getElementById('geo2utmTab').classList.add('active');
+                document.getElementById('utm2geoTab').classList.remove('active');
+                document.getElementById('tabTrans1Btn').classList.add('active');
+                document.getElementById('tabTrans2Btn').classList.remove('active');
+            } else {
+                document.getElementById('utm2geoTab').classList.add('active');
+                document.getElementById('geo2utmTab').classList.remove('active');
+                document.getElementById('tabTrans2Btn').classList.add('active');
+                document.getElementById('tabTrans1Btn').classList.remove('active');
+            }
+        }
+
+        function autofillPointForTransform() {
+            const query = document.getElementById('transPointInput').value.trim();
+            const pt = findPointById(query);
+            if (pt) {
+                document.getElementById('transLat').value = pt.latitude;
+                document.getElementById('transLon').value = pt.longitude;
+            }
+        }
+
+        // دالة تحويل Lat/Long إلى UTM
+        function convertLatLonToUTM() {
+            const lat = parseFloat(document.getElementById('transLat').value);
+            const lon = parseFloat(document.getElementById('transLon').value);
+            const resBox = document.getElementById('geo2utmResult');
+
+            if (isNaN(lat) || isNaN(lon)) {
+                resBox.style.display = 'block';
+                resBox.style.color = '#c0392b';
+                resBox.style.background = '#fadbd8';
+                resBox.innerHTML = 'خطأ: يرجى إدخال قيم صحيحة لخط العرض وخط الطول!';
+                return;
+            }
+
+            let zone = Math.floor((lon + 180) / 6) + 1;
+            let lonOrigin = (zone - 1) * 6 - 180 + 3;
+            let lonOriginRad = lonOrigin * Math.PI / 180;
+            
+            let latRad = lat * Math.PI / 180;
+            let lonRad = lon * Math.PI / 180;
+            
+            let a = 6378137.0;
+            let k0 = 0.9996;
+            let eSquared = 0.00669437999014;
+            let ePrimeSquared = eSquared / (1 - eSquared);
+            
+            let N = a / Math.sqrt(1 - eSquared * Math.sin(latRad) * Math.sin(latRad));
+            let T = Math.tan(latRad) * Math.tan(latRad);
+            let C = ePrimeSquared * Math.cos(latRad) * Math.cos(latRad);
+            let A = Math.cos(latRad) * (lonRad - lonOriginRad);
+            
+            let M = a * (
+                (1 - eSquared/4 - 3*eSquared*eSquared/64 - 5*eSquared*eSquared*eSquared/256) * latRad -
+                (3*eSquared/8 + 3*eSquared*eSquared/32 + 45*eSquared*eSquared*eSquared/1024) * Math.sin(2*latRad) +
+                (15*eSquared*eSquared/256 + 45*eSquared*eSquared*eSquared/1024) * Math.sin(4*latRad) -
+                (35*eSquared*eSquared*eSquared/3072) * Math.sin(6*latRad)
+            );
+            
+            let x = k0 * N * (A + (1 - T + C) * A * A * A / 6 + (5 - 18 * T + T * T + 72 * C - 58 * ePrimeSquared) * A * A * A * A * A / 120) + 500000.0;
+            let y = k0 * (M + N * Math.tan(latRad) * (A * A / 2 + (5 - T + 9 * C + 4 * C * C) * A * A * A * A / 24 + (61 - 58 * T + T * T + 600 * C - 330 * ePrimeSquared) * A * A * A * A * A * A / 720));
+            
+            if (lat < 0) {
+                y += 10000000.0;
+            }
+
+            resBox.style.display = 'block';
+            resBox.style.color = '#117a65';
+            resBox.style.background = '#e8f8f5';
+            resBox.innerHTML = `نتائج التحويل إلى مسقط UTM:<br>
+                📍 <b>الشرقيات (X):</b> ${x.toFixed(3)} متر<br>
+                📍 <b>الشماليات (Y):</b> ${y.toFixed(3)} متر<br>
+                🌐 <b>النطاق (Zone):</b> ${zone} (${lat >= 0 ? 'شمالي N' : 'جنوبي S'})`;
+        }
+
+        // دالة تحويل UTM إلى Lat/Long
+        function convertUTMToLatLon() {
+            const easting = parseFloat(document.getElementById('transEasting').value);
+            const northing = parseFloat(document.getElementById('transNorthing').value);
+            const zone = parseInt(document.getElementById('transZone').value);
+            const hemisphere = document.getElementById('transHemisphere').value;
+            const resBox = document.getElementById('utm2geoResult');
+
+            if (isNaN(easting) || isNaN(northing) || isNaN(zone)) {
+                resBox.style.display = 'block';
+                resBox.style.color = '#c0392b';
+                resBox.style.background = '#fadbd8';
+                resBox.innerHTML = 'خطأ: يرجى إدخال جميع الحقول بدقة!';
+                return;
+            }
+
+            let k0 = 0.9996;
+            let a = 6378137.0;
+            let eSquared = 0.00669437999014;
+            let e1 = (1 - Math.sqrt(1 - eSquared)) / (1 + Math.sqrt(1 - eSquared));
+            
+            let x = easting - 500000.0;
+            let y = northing;
+            
+            if (hemisphere === 'S') {
+                y -= 10000000.0;
+            }
+            
+            let M = y / k0;
+            let mu = M / (a * (1 - eSquared/4 - 3*eSquared*eSquared/64 - 5*eSquared*eSquared*eSquared/256));
+            
+            let phi1Rad = mu + (3*e1/2 - 27*e1*e1*e1/32) * Math.sin(2*mu) +
+                          (21*e1*e1/16 - 55*e1*e1*e1*e1/32) * Math.sin(4*mu) +
+                          (151*e1*e1*e1/96) * Math.sin(6*mu);
+                          
+            let N1 = a / Math.sqrt(1 - eSquared * Math.sin(phi1Rad) * Math.sin(phi1Rad));
+            let T1 = Math.tan(phi1Rad) * Math.tan(phi1Rad);
+            let C1 = (eSquared / (1 - eSquared)) * Math.cos(phi1Rad) * Math.cos(phi1Rad);
+            let R1 = a * (1 - eSquared) / Math.pow(1 - eSquared * Math.sin(phi1Rad) * Math.sin(phi1Rad), 1.5);
+            let D = x / (N1 * k0);
+            
+            let latRad = phi1Rad - (N1 * Math.tan(phi1Rad) / R1) * (
+                D * D / 2 - (5 + 3 * T1 + 10 * C1 - 4 * C1 * C1 - 9 * (eSquared / (1 - eSquared))) * D * D * D * D / 24 +
+                (61 + 90 * T1 + 298 * C1 + 45 * T1 * T1 - 252 * (eSquared / (1 - eSquared)) - 3 * C1 * C1) * D * D * D * D * D * D / 720
+            );
+            
+            let lonOrigin = (zone - 1) * 6 - 180 + 3;
+            let lonRad = (lonOrigin * Math.PI / 180) + (
+                D - (1 + 2 * T1 + C1) * D * D * D / 6 +
+                (5 - 2 * C1 + 28 * T1 - 3 * C1 * C1 + 8 * (eSquared / (1 - eSquared)) + 24 * T1 * T1) * D * D * D * D * D / 120
+            ) / Math.cos(phi1Rad);
+
+            let lat = latRad * 180 / Math.PI;
+            let lon = lonRad * 180 / Math.PI;
+
+            resBox.style.display = 'block';
+            resBox.style.color = '#117a65';
+            resBox.style.background = '#e8f8f5';
+            resBox.innerHTML = `نتائج التحويل إلى الإحداثيات الجغرافية:<br>
+                📍 <b>خط العرض (Latitude):</b> ${lat.toFixed(6)}°<br>
+                📍 <b>خط الطول (Longitude):</b> ${lon.toFixed(6)}°`;
+        }
+
+        // فتح وإغلاق نافذة الاستعلام
+        function toggleQueryModal() {
+            const modal = document.getElementById('queryModal');
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+            document.getElementById('geoModal').style.display = 'none';
+            document.getElementById('transformModal').style.display = 'none';
+            document.getElementById('basemapDropdown').style.display = 'none';
+            if (modal.style.display === 'block') {
+                renderQueryList();
+            }
+        }
+
+        // قائمة الحفظ والتصدير (GeoJSON, CSV, PDF) - [مُحدّثة ومصححة]
+        function openSaveMenu() {
+            const choice = prompt('اختر صيغة الحفظ المطلوبة:\n1 - GeoJSON\n2 - CSV\n3 - PDF (تقرير مطبوع)');
+            if (choice === '1') {
+                exportGeoJSON();
+            } else if (choice === '2') {
+                exportCSV();
+            } else if (choice === '3') {
+                exportPDF();
+            }
+        }
+
+        function exportGeoJSON() {
+            if (!allPointsData || allPointsData.length === 0) {
+                alert('لا توجد نقاط للتصدير!');
+                return;
+            }
+            const features = allPointsData.map(p => ({
+                type: "Feature",
+                geometry: { type: "Point", coordinates: [parseFloat(p.longitude), parseFloat(p.latitude)] },
+                properties: { point_id: p.point_id, name: p.name, elevation: p.elevation_m, type: p.type, description: p.description }
+            }));
+            const geojson = { type: "FeatureCollection", features: features };
+            const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'geodetic_points.geojson';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportCSV() {
+            if (!allPointsData || allPointsData.length === 0) {
+                alert('لا توجد نقاط للتصدير!');
+                return;
+            }
+            let csv = 'Point ID,Name,Latitude,Longitude,Elevation,Type,Description\n';
+            allPointsData.forEach(p => {
+                csv += `${p.point_id},"${p.name || ''}",${p.latitude},${p.longitude},${p.elevation_m || ''},"${p.type || ''}","${p.description || ''}"\n`;
+            });
+            const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'geodetic_points.csv';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+
+        function exportPDF() {
+            if (!allPointsData || allPointsData.length === 0) {
+                alert('لا توجد نقاط للتقرير!');
+                return;
+            }
+            let win = window.open('', '_blank');
+            if (!win) {
+                alert('تم حظر فتح النافذة المنبثقة من قبل المتصفح. يرجى السماح بالنوافذ المنبثقة (Popups).');
+                return;
+            }
+            let html = `<html dir="rtl"><head><title>تقرير نقاط التحكم الجيوديسية</title><style>table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:8px;text-align:center;font-family:Tahoma;font-size:12px;}th{background:#2c3e50;color:white;}</style></head><body>`;
+            html += `<h2 style="text-align:center;font-family:Tahoma;">تقرير نقاط التحكم الجيوديسية التفاعلي</h2>`;
+            html += `<table><tr><th>ID</th><th>الاسم</th><th>خط العرض</th><th>خط الطول</th><th>الارتفاع (م)</th><th>النوع</th><th>الوصف</th></tr>`;
+            allPointsData.forEach(p => {
+                html += `<tr><td>${p.point_id}</td><td>${p.name || '-'}</td><td>${p.latitude}</td><td>${p.longitude}</td><td>${p.elevation_m || '-'}</td><td>${p.type || '-'}</td><td>${p.description || '-'}</td></tr>`;
+            });
+            html += `</table><script>window.onload = function() { window.print(); };<\/script></body></html>`;
+            win.document.write(html);
+            win.document.close();
+        }
+
+        // رسم قائمة النقاط في نافذة الاستعلام
+        function renderQueryList() {
+            const container = document.getElementById('queryPointsList');
+            container.innerHTML = '';
+            if (allPointsData.length === 0) {
+                container.innerHTML = '<p style="text-align:center; color:#7f8c8d;">لا توجد نقاط مسجلة.</p>';
+                return;
+            }
+
+            allPointsData.forEach(p => {
+                const card = document.createElement('div');
+                card.className = 'point-card';
+                card.innerHTML = `
+                    <div class="point-header" onclick="togglePointDetails(this)">
+                        <span>📍 ${p.name || ('نقطة ' + p.point_id)} (ID: ${p.point_id})</span>
+                        <span>▼</span>
+                    </div>
+                    <div class="point-details">
+                        <b>خط العرض:</b> ${p.latitude}<br>
+                        <b>خط الطول:</b> ${p.longitude}<br>
+                        <b>الارتفاع:</b> ${p.elevation_m ? p.elevation_m + ' متر' : 'غير متوفر'}<br>
+                        <b>النوع:</b> ${p.type || 'جيوديسي'}<br>
+                        <b>الوصف:</b> ${p.description || 'لا يوجد'}<br><br>
+                        <button class="delete-btn" onclick="deletePoint(${p.point_id}, '${p.name || p.point_id}')">حذف النقطة</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        function togglePointDetails(headerEl) {
+            const details = headerEl.nextElementSibling;
+            details.style.display = details.style.display === 'block' ? 'none' : 'block';
+        }
+
+        // حذف النقطة مع كلمة المرور
+        function deletePoint(pointId, pointName) {
+            const password = prompt('الرجاء إدخال كلمة المرور لتأكيد حذف النقطة:');
+            if (password === null) return;
+            if (password !== '62936015747') {
+                alert('كلمة المرور غير صحيحة! تم إلغاء عملية الحذف.');
+                return;
+            }
+
+            if (confirm(`هل أنت متأكد من رغبتك في حذف النقطة (${pointName})؟`)) {
+                fetch(`http://localhost:3000/api/points/${pointId}`, {
+                    method: 'DELETE'
+                })
+                .then(res => res.json())
+                .then(data => {
+                    alert('تم حذف النقطة بنجاح!');
+                    loadPoints();
+                    toggleQueryModal();
+                })
+                .catch(err => {
+                    console.error('خطأ في الحذف:', err);
+                    alert('حدث خطأ أثناء محاولة الحذف.');
+                });
+            }
+        }
+
+        // إضافة نقطة جديدة
+        function openAddPointModal() {
+            const id = prompt('أدخل رقم النقطة (Point ID - رقم صحيح):');
+            if (!id) return;
+            const name = prompt('أدخل اسم النقطة (مثل G11):');
+            const lat = prompt('أدخل خط العرض (Latitude):');
+            const lon = prompt('أدخل خط الطول (Longitude):');
+            const elevation = prompt('أدخل الارتفاع بالمتر (Elevation):');
+            const type = prompt('أدخل نوع النقطة (Primary / Secondary):');
+            const description = prompt('أدخل الوصف (Description):');
+
+            if (!lat || !lon) {
+                alert('خط العرض وخط الطول إجباريان!');
+                return;
+            }
+
+            const newPoint = {
+                point_id: parseInt(id),
+                name: name || ('G' + id),
+                latitude: parseFloat(lat),
+                longitude: parseFloat(lon),
+                elevation_m: elevation ? parseFloat(elevation) : null,
+                type: type || 'Secondary',
+                description: description || ''
+            };
+
+            fetch('http://localhost:3000/api/points', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(newPoint)
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert('تمت إضافة النقطة الجديدة بنجاح إلى قاعدة البيانات!');
+                loadPoints();
+                toggleQueryModal();
+            })
+            .catch(err => {
+                console.error('خطأ في الإضافة:', err);
+                alert('حدث خطأ أثناء إضافة النقطة.');
+            });
+        }
+
+        // التبديل بين التبويبات القياسية والجديدة
+        function switchTab(tabName) {
+            document.getElementById('distanceTab').classList.remove('active');
+            document.getElementById('areaTab').classList.remove('active');
+            document.getElementById('azimuthTab').classList.remove('active');
+            document.getElementById('bufferTab').classList.remove('active');
+            document.getElementById('profileTab').classList.remove('active');
+            document.getElementById('navTab').classList.remove('active');
+            
+            document.getElementById('tabDistBtn').classList.remove('active');
+            document.getElementById('tabAreaBtn').classList.remove('active');
+            document.getElementById('tabAzimuthBtn').classList.remove('active');
+            document.getElementById('tabBufferBtn').classList.remove('active');
+            document.getElementById('tabProfileBtn').classList.remove('active');
+            document.getElementById('tabNavBtn').classList.remove('active');
+
+            if (tabName === 'distance') {
+                document.getElementById('distanceTab').classList.add('active');
+                document.getElementById('tabDistBtn').classList.add('active');
+            } else if (tabName === 'area') {
+                document.getElementById('areaTab').classList.add('active');
+                document.getElementById('tabAreaBtn').classList.add('active');
+            } else if (tabName === 'azimuth') {
+                document.getElementById('azimuthTab').classList.add('active');
+                document.getElementById('tabAzimuthBtn').classList.add('active');
+            } else if (tabName === 'buffer') {
+                document.getElementById('bufferTab').classList.add('active');
+                document.getElementById('tabBufferBtn').classList.add('active');
+            } else if (tabName === 'profile') {
+                document.getElementById('profileTab').classList.add('active');
+                document.getElementById('tabProfileBtn').classList.add('active');
+            } else if (tabName === 'nav') {
+                document.getElementById('navTab').classList.add('active');
+                document.getElementById('tabNavBtn').classList.add('active');
+            }
+        }
+
+        function addAreaPointInput() {
+            const container = document.getElementById('areaPointsContainer');
+            const count = container.children.length + 1;
+            const div = document.createElement('div');
+            div.className = 'form-group';
+            div.innerHTML = `<label>رقم النقطة رقم ${count}:</label><input type="text" class="area-point-input" placeholder="مثال: G0${count}" onkeypress="handleAreaEnter(event)">`;
+            container.appendChild(div);
+        }
+
+        // جلب النقاط وتحديث اللوحة الإحصائية
+        function loadPoints() {
+            fetch('http://localhost:3000/api/points')
+                .then(response => response.json())
+                .then(data => {
+                    allPointsData = data;
+                    displayMarkers(data);
+                    updateStatistics(data);
+                    if (document.getElementById('queryModal').style.display === 'block') {
+                        renderQueryList();
+                    }
+                })
+                .catch(error => console.error('خطأ في جلب بيانات النقاط:', error));
+        }
+
+        // تحديث إحصائيات المشروع
+        function updateStatistics(data) {
+            const total = data.length;
+            let primaryCount = 0;
+            let secondaryCount = 0;
+            let elevations = [];
+
+            data.forEach(p => {
+                const t = (p.type || '').toLowerCase();
+                if (t.includes('primary') || t.includes('رئيسي')) {
+                    primaryCount++;
+                } else {
+                    secondaryCount++;
+                }
+
+                if (p.elevation_m !== null && p.elevation_m !== undefined && !isNaN(p.elevation_m)) {
+                    elevations.push(parseFloat(p.elevation_m));
+                }
+            });
+
+            document.getElementById('statTotal').innerText = total;
+            document.getElementById('statPrimary').innerText = primaryCount;
+            document.getElementById('statSecondary').innerText = secondaryCount;
+
+            if (elevations.length > 0) {
+                const maxZ = Math.max(...elevations);
+                const minZ = Math.min(...elevations);
+                document.getElementById('statMaxZ').innerText = maxZ.toFixed(2) + ' م';
+                document.getElementById('statMinZ').innerText = minZ.toFixed(2) + ' م';
+            } else {
+                document.getElementById('statMaxZ').innerText = 'غير متوفر';
+                document.getElementById('statMinZ').innerText = 'غير متوفر';
+            }
+        }
+
+        // عرض العلامات على الخريطة مع الألوان الخاصة بالفئات
+        function displayMarkers(data) {
+            markersLayer.clearLayers();
+            markersMap = {};
+            data.forEach(point => {
+                const lat = parseFloat(point.latitude);
+                const lon = parseFloat(point.longitude);
+                if (!isNaN(lat) && !isNaN(lon)) {
+                    let iconToUse = blueIcon;
+                    const pType = (point.type || '').toLowerCase();
+                    if (pType.includes('primary') || pType.includes('رئيسي')) {
+                        iconToUse = greenIcon;
+                    }
+
+                    const marker = L.marker([lat, lon], {icon: iconToUse});
+                    
+                    marker.bindPopup(`
+                        <div style="text-align: right; direction: rtl;">
+                            <b>اسم النقطة:</b> ${point.name || point.point_id}<br>
+                            <b>خط العرض:</b> ${lat}<br>
+                            <b>خط الطول:</b> ${lon}<br>
+                            <b>الارتفاع:</b> ${point.elevation_m ? point.elevation_m + ' متر' : 'غير متوفر'}<br>
+                            <b>النوع:</b> ${point.type || 'جيوديسي'}<br>
+                            <b>الوصف:</b> ${point.description || 'لا يوجد'}<br>
+                            <i style="color:#e74c3c; font-size:11px;">💡 انقر بزر الماوس الأيمن لتحديد النقطة للقياس الهندسي</i>
+                        </div>
+                    `);
+
+                    marker.on('contextmenu', (e) => {
+                        L.DomEvent.preventDefault(e);
+                        handleMarkerRightClick(point, marker);
+                    });
+
+                    markersLayer.addLayer(marker);
+                    
+                    if (point.name) markersMap[point.name.toLowerCase()] = {marker, lat, lon, point};
+                    if (point.point_id) markersMap[point.point_id.toString().toLowerCase()] = {marker, lat, lon, point};
+                }
+            });
+        }
+
+        function handleMarkerRightClick(point, marker) {
+            marker.setIcon(redIcon);
+
+            if (!rightClickSelectedPoints.some(p => p.point_id === point.point_id)) {
+                rightClickSelectedPoints.push(point);
+            }
+
+            const box = document.getElementById('rightClickBox');
+            const content = document.getElementById('rightClickContent');
+            box.style.display = 'block';
+
+            let namesList = rightClickSelectedPoints.map(p => p.name || p.point_id).join(' ➔ ');
+
+            if (rightClickSelectedPoints.length === 2) {
+                const p1 = rightClickSelectedPoints[0];
+                const p2 = rightClickSelectedPoints[1];
+                const l1 = L.latLng(p1.latitude, p1.longitude);
+                const l2 = L.latLng(p2.latitude, p2.longitude);
+                const dist = l1.distanceTo(l2);
+
+                content.innerHTML = `
+                    <b>النقاط المحددة:</b> ${namesList}<br>
+                    📏 <b>المسافة:</b> ${dist.toFixed(2)} متر (${(dist/1000).toFixed(3)} كم)
+                `;
+
+                measurementLayer.clearLayers();
+                L.polyline([l1, l2], {color: '#e74c3c', weight: 4, dashArray: '5, 5'}).addTo(measurementLayer);
+
+            } else if (rightClickSelectedPoints.length >= 3) {
+                let coords = rightClickSelectedPoints.map(p => [parseFloat(p.longitude), parseFloat(p.latitude)]);
+                coords.push(coords[0]);
+
+                try {
+                    const polygon = turf.polygon([coords]);
+                    const areaSq = turf.area(polygon);
+                    const areaHec = areaSq / 10000;
+
+                    content.innerHTML = `
+                        <b>النقاط المحددة (${rightClickSelectedPoints.length} نقاط):</b> ${namesList}<br>
+                        📐 <b>المساحة:</b> ${areaSq.toFixed(2)} م² (${areaHec.toFixed(4)} هكتار)<br>
+                        <i style="color:#27ae60;">يمكنك مواصلة الضغط على نقاط أخرى أو إعادة الضبط.</i>
+                    `;
+
+                    measurementLayer.clearLayers();
+                    L.polygon(coords.map(c => [c[1], c[0]]), {color: '#8e44ad', fillColor: '#9b59b6', fillOpacity: 0.4, weight: 3}).addTo(measurementLayer);
+                } catch(err) {
+                    content.innerHTML = `النقاط المحددة: ${namesList} (أضف نقاطاً بشكل مرتب لتكوين المضلع)`;
+                }
+            } else {
+                content.innerHTML = `
+                    <b>النقطة الأولى المحددة:</b> ${namesList}<br>
+                    <span style="color:#2980b9;">انقر بزر الماوس الأيمن على نقطة أخرى لحساب المسافة، أو 3 نقاط لحساب المساحة.</span>
+                `;
+            }
+        }
+
+        function clearRightClickMeasurements() {
+            rightClickSelectedPoints = [];
+            document.getElementById('rightClickBox').style.display = 'none';
+            measurementLayer.clearLayers();
+            loadPoints();
+        }
+
+        // حساب الانحراف والاتجاه (Azimuth & Bearing)
+        function calculateAzimuth() {
+            const startQuery = document.getElementById('azimuthStart').value.trim();
+            const endQuery = document.getElementById('azimuthEnd').value.trim();
+            const resultBox = document.getElementById('azimuthResult');
+
+            const p1 = findPointById(startQuery);
+            const p2 = findPointById(endQuery);
+
+            if (!p1 || !p2) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: إحدى النقاط غير موجودة في قاعدة البيانات!';
+                return;
+            }
+
+            const pt1 = turf.point([parseFloat(p1.longitude), parseFloat(p1.latitude)]);
+            const pt2 = turf.point([parseFloat(p2.longitude), parseFloat(p2.latitude)]);
+
+            let rawBearing = turf.bearing(pt1, pt2);
+            let forwardAzimuth = (rawBearing + 360) % 360;
+            let backAzimuth = (forwardAzimuth + 180) % 360;
+
+            resultBox.style.display = 'block';
+            resultBox.style.color = '#117a65';
+            resultBox.style.background = '#e8f8f5';
+            resultBox.innerHTML = `نتائج الانحراف بين (${p1.name || p1.point_id}) و (${p2.name || p2.point_id}):<br>
+                🧭 <b>الانحراف الأمامي (Forward):</b> ${forwardAzimuth.toFixed(2)}°<br>
+                🔄 <b>الانحراف الخلفي (Back):</b> ${backAzimuth.toFixed(2)}°`;
+
+            measurementLayer.clearLayers();
+            const l1 = L.latLng(parseFloat(p1.latitude), parseFloat(p1.longitude));
+            const l2 = L.latLng(parseFloat(p2.latitude), parseFloat(p2.longitude));
+            L.polyline([l1, l2], {color: '#2980b9', weight: 4, dashArray: '5, 5'}).addTo(measurementLayer);
+            map.fitBounds([l1, l2]);
+        }
+
+        // رسم وحساب نطاق الحماية Buffer Zone
+        function calculateBuffer() {
+            const query = document.getElementById('bufferPoint').value.trim();
+            const radius = parseFloat(document.getElementById('bufferRadius').value);
+            const resultBox = document.getElementById('bufferResult');
+
+            const ptData = findPointById(query);
+            if (!ptData) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: النقطة غير موجودة في قاعدة البيانات!';
+                return;
+            }
+
+            if (isNaN(radius) || radius <= 0) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: يرجى إدخال نصف قطر صحيح!';
+                return;
+            }
+
+            const pointGeo = turf.point([parseFloat(ptData.longitude), parseFloat(ptData.latitude)]);
+            const buffered = turf.buffer(pointGeo, radius, {units: 'meters'});
+
+            let countInside = 0;
+            allPointsData.forEach(p => {
+                const pGeo = turf.point([parseFloat(p.longitude), parseFloat(p.latitude)]);
+                if (turf.booleanPointInPolygon(pGeo, buffered)) {
+                    countInside++;
+                }
+            });
+
+            const areaSqMeters = turf.area(buffered);
+
+            resultBox.style.display = 'block';
+            resultBox.style.color = '#117a65';
+            resultBox.style.background = '#e8f8f5';
+            resultBox.innerHTML = `نطاق الحماية للنقطة (${ptData.name || ptData.point_id}) [${radius} متر]:<br>
+                🌾 <b>مساحة النطاق:</b> ${areaSqMeters.toFixed(2)} م²<br>
+                📍 <b>عدد النقاط داخله:</b> ${countInside} نقطة`;
+
+            measurementLayer.clearLayers();
+            L.geoJSON(buffered, {
+                style: { color: '#8e44ad', fillColor: '#9b59b6', fillOpacity: 0.3, weight: 2 }
+            }).addTo(measurementLayer);
+
+            const l = L.latLng(parseFloat(ptData.latitude), parseFloat(ptData.longitude));
+            map.setView(l, 15);
+        }
+
+        // حساب القطاع الطولي وانحدار وميل الأرض (Slope & Profile)
+        function calculateProfile() {
+            const startQuery = document.getElementById('profileStart').value.trim();
+            const endQuery = document.getElementById('profileEnd').value.trim();
+            const resultBox = document.getElementById('profileResult');
+            const chartContainer = document.getElementById('chartContainer');
+
+            const p1 = findPointById(startQuery);
+            const p2 = findPointById(endQuery);
+
+            if (!p1 || !p2) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: إحدى النقاط غير موجودة في قاعدة البيانات!';
+                chartContainer.style.display = 'none';
+                return;
+            }
+
+            const z1 = parseFloat(p1.elevation_m);
+            const z2 = parseFloat(p2.elevation_m);
+
+            if (isNaN(z1) || isNaN(z2)) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: إحدى النقاط لا تحتوي على قيمة ارتفاع (Elevation) صحيحة!';
+                chartContainer.style.display = 'none';
+                return;
+            }
+
+            const l1 = L.latLng(parseFloat(p1.latitude), parseFloat(p1.longitude));
+            const l2 = L.latLng(parseFloat(p2.latitude), parseFloat(p2.longitude));
+            const totalDist = l1.distanceTo(l2);
+            const deltaZ = z2 - z1;
+            const slopePercent = totalDist !== 0 ? (deltaZ / totalDist) * 100 : 0;
+            const angleDeg = Math.atan(deltaZ / (totalDist || 1)) * (180 / Math.PI);
+
+            resultBox.style.display = 'block';
+            resultBox.style.color = '#117a65';
+            resultBox.style.background = '#e8f8f5';
+            resultBox.innerHTML = `القطاع الطولي بين (${p1.name || p1.point_id}) و (${p2.name || p2.point_id}):<br>
+                📏 <b>المسافة الأفقية:</b> ${totalDist.toFixed(2)} م<br>
+                📈 <b>فرق الارتفاع (ΔZ):</b> ${deltaZ.toFixed(2)} م<br>
+                📐 <b>نسبة الميل (Slope):</b> ${slopePercent.toFixed(2)}% (${angleDeg.toFixed(2)}°)`;
+
+            chartContainer.style.display = 'block';
+
+            const steps = 5;
+            let labels = [];
+            let dataElevations = [];
+
+            for (let i = 0; i <= steps; i++) {
+                let ratio = i / steps;
+                let distStep = (totalDist * ratio).toFixed(1);
+                let elevStep = z1 + (deltaZ * ratio);
+                labels.push(`${distStep}م`);
+                dataElevations.push(parseFloat(elevStep.toFixed(2)));
+            }
+
+            const ctx = document.getElementById('profileChart').getContext('2d');
+            if (profileChartInstance) {
+                profileChartInstance.destroy();
+            }
+
+            profileChartInstance = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'القطاع الطولي للارتفاعات',
+                        data: dataElevations,
+                        borderColor: '#e67e22',
+                        backgroundColor: 'rgba(230, 126, 34, 0.2)',
+                        fill: true,
+                        tension: 0.3
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { labels: { font: { family: 'Tahoma', size: 10 } } }
+                    },
+                    scales: {
+                        x: { title: { display: true, text: 'المسافة (متر)', font: { size: 10 } } },
+                        y: { title: { display: true, text: 'الارتفاع (متر)', font: { size: 10 } } }
+                    }
+                }
+            });
+
+            measurementLayer.clearLayers();
+            L.polyline([l1, l2], {color: '#e67e22', weight: 4, dashArray: '5, 5'}).addTo(measurementLayer);
+            map.fitBounds([l1, l2]);
+        }
+
+        // أداة التوجيه الميداني المباشر عبر GPS
+        function toggleLiveGPSNav() {
+            const targetQuery = document.getElementById('navTargetPoint').value.trim();
+            const resultBox = document.getElementById('navResult');
+            const toggleBtn = document.getElementById('navToggleBtn');
+
+            const targetPt = findPointById(targetQuery);
+            if (!targetPt) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: نقطة التحكم المستهدفة غير موجودة!';
+                return;
+            }
+
+            if (!navigator.geolocation) {
+                alert('متصفحك لا يدعم خاصية تحديد الموقع الجغرافي GPS!');
+                return;
+            }
+
+            if (isNavigating) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                isNavigating = false;
+                toggleBtn.innerText = 'بدء التوجيه الميداني 🛰️';
+                toggleBtn.style.background = '#16a085';
+                if (userGpsMarker) {
+                    map.removeLayer(userGpsMarker);
+                    userGpsMarker = null;
+                }
+                resultBox.style.display = 'none';
+                measurementLayer.clearLayers();
+                return;
+            }
+
+            isNavigating = true;
+            toggleBtn.innerText = 'إيقاف التوجيه ⏹️';
+            toggleBtn.style.background = '#c0392b';
+            resultBox.style.display = 'block';
+            resultBox.style.color = '#117a65';
+            resultBox.style.background = '#e8f8f5';
+            resultBox.innerHTML = 'جاري البحث عن موقع GPS الخاص بك...';
+
+            gpsWatchId = navigator.geolocation.watchPosition(
+                (position) => {
+                    const userLat = position.coords.latitude;
+                    const userLon = position.coords.longitude;
+
+                    const userLatLng = L.latLng(userLat, userLon);
+                    const targetLatLng = L.latLng(parseFloat(targetPt.latitude), parseFloat(targetPt.longitude));
+
+                    const distMeters = userLatLng.distanceTo(targetLatLng);
+                    const turfUser = turf.point([userLon, userLat]);
+                    const turfTarget = turf.point([parseFloat(targetPt.longitude), parseFloat(targetPt.latitude)]);
+                    const rawBearing = turf.bearing(turfUser, turfTarget);
+                    const forwardAzimuth = (rawBearing + 360) % 360;
+
+                    resultBox.innerHTML = `🛰️ <b>التوجيه الميداني المباشر للنقطة (${targetPt.name || targetPt.point_id}):</b><br>
+                        📍 <b>موقعك الحالي:</b> ${userLat.toFixed(5)}, ${userLon.toFixed(5)}<br>
+                        📏 <b>المسافة المتبقية:</b> ${distMeters.toFixed(2)} متر<br>
+                        🧭 <b>اتجاه الانحراف (Azimuth):</b> ${forwardAzimuth.toFixed(2)}°`;
+
+                    if (!userGpsMarker) {
+                        userGpsMarker = L.marker([userLat, userLon], {icon: userGpsIcon}).addTo(map)
+                            .bindPopup('موقعك الميداني الحالي (GPS)');
+                    } else {
+                        userGpsMarker.setLatLng([userLat, userLon]);
+                    }
+
+                    measurementLayer.clearLayers();
+                    L.polyline([userLatLng, targetLatLng], {color: '#16a085', weight: 4, dashArray: '6, 6'}).addTo(measurementLayer);
+                },
+                (error) => {
+                    resultBox.style.color = '#c0392b';
+                    resultBox.style.background = '#fadbd8';
+                    resultBox.innerHTML = 'خطأ في استقبال إشارة GPS: ' + error.message;
+                    isNavigating = false;
+                    toggleBtn.innerText = 'بدء التوجيه الميداني 🛰️';
+                    toggleBtn.style.background = '#16a085';
+                },
+                { enableHighAccuracy: true, maximumAge: 10000, timeout: 20000 }
+            );
+        }
+
+        // الانتقال السريع Go To
+        function goToPoint() {
+            const query = document.getElementById('gotoInput').value.trim().toLowerCase();
+            if (!query) return;
+            const found = markersMap[query];
+            if (found) {
+                map.setView([found.lat, found.lon], 16);
+                found.marker.openPopup();
+            } else {
+                alert('لم يتم العثور على النقطة المطلوبة!');
+            }
+        }
+
+        function handleGotoEnter(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                goToPoint();
+            }
+        }
+
+        function handleDistEnter(event, fieldType) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                if (fieldType === 'start') {
+                    document.getElementById('endPoint').focus();
+                } else if (fieldType === 'end') {
+                    calculateDistance();
+                }
+            }
+        }
+
+        function handleAreaEnter(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                const inputs = Array.from(document.querySelectorAll('.area-point-input'));
+                const currentIndex = inputs.indexOf(event.target);
+                if (currentIndex < inputs.length - 1) {
+                    inputs[currentIndex + 1].focus();
+                } else {
+                    calculateArea();
+                }
+            }
+        }
+
+        function filterPoints() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allPointsData.filter(point => {
+                const name = (point.name || '').toString().toLowerCase();
+                const id = (point.point_id || '').toString().toLowerCase();
+                const type = (point.type || '').toString().toLowerCase();
+                return name.includes(query) || id.includes(query) || type.includes(query);
+            });
+            displayMarkers(filtered);
+        }
+
+        function refreshData() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('gotoInput').value = '';
+            loadPoints();
+        }
+
+        function clearMapMeasurements() {
+            if (isNavigating && gpsWatchId !== null) {
+                navigator.geolocation.clearWatch(gpsWatchId);
+                isNavigating = false;
+                const toggleBtn = document.getElementById('navToggleBtn');
+                if (toggleBtn) {
+                    toggleBtn.innerText = 'بدء التوجيه الميداني 🛰️';
+                    toggleBtn.style.background = '#16a085';
+                }
+                if (userGpsMarker) {
+                    map.removeLayer(userGpsMarker);
+                    userGpsMarker = null;
+                }
+            }
+
+            measurementLayer.clearLayers();
+            document.getElementById('distanceResult').style.display = 'none';
+            document.getElementById('areaResult').style.display = 'none';
+            document.getElementById('azimuthResult').style.display = 'none';
+            document.getElementById('bufferResult').style.display = 'none';
+            document.getElementById('profileResult').style.display = 'none';
+            document.getElementById('navResult').style.display = 'none';
+            document.getElementById('chartContainer').style.display = 'none';
+
+            document.getElementById('startPoint').value = '';
+            document.getElementById('endPoint').value = '';
+            document.getElementById('azimuthStart').value = '';
+            document.getElementById('azimuthEnd').value = '';
+            document.getElementById('bufferPoint').value = '';
+            document.getElementById('profileStart').value = '';
+            document.getElementById('profileEnd').value = '';
+            document.getElementById('navTargetPoint').value = '';
+
+            if (profileChartInstance) {
+                profileChartInstance.destroy();
+                profileChartInstance = null;
+            }
+
+            const areaInputs = document.querySelectorAll('.area-point-input');
+            areaInputs.forEach(input => input.value = '');
+        }
+
+        function findPointById(query) {
+            return allPointsData.find(p => 
+                (p.name && p.name.toString().toLowerCase() === query.toLowerCase()) || 
+                (p.point_id && p.point_id.toString().toLowerCase() === query.toLowerCase())
+            );
+        }
+
+        function calculateDistance() {
+            const startQuery = document.getElementById('startPoint').value.trim();
+            const endQuery = document.getElementById('endPoint').value.trim();
+            const resultBox = document.getElementById('distanceResult');
+
+            const p1 = findPointById(startQuery);
+            const p2 = findPointById(endQuery);
+
+            if (!p1 || !p2) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: إحدى النقاط غير موجودة في قاعدة البيانات!';
+                return;
+            }
+
+            const latlng1 = L.latLng(parseFloat(p1.latitude), parseFloat(p1.longitude));
+            const latlng2 = L.latLng(parseFloat(p2.latitude), parseFloat(p2.longitude));
+
+            const distanceMeters = latlng1.distanceTo(latlng2);
+            const distanceKm = distanceMeters / 1000;
+
+            resultBox.style.display = 'block';
+            resultBox.style.color = '#117a65';
+            resultBox.style.background = '#e8f8f5';
+            resultBox.innerHTML = `المسافة بين (${p1.name || p1.point_id}) و (${p2.name || p2.point_id}):<br>
+                📏 <b>${distanceMeters.toFixed(2)}</b> متر (${distanceKm.toFixed(3)} كم)`;
+
+            measurementLayer.clearLayers();
+            L.polyline([latlng1, latlng2], {color: '#e74c3c', weight: 4, dashArray: '5, 5'}).addTo(measurementLayer);
+            map.fitBounds([latlng1, latlng2]);
+        }
+
+        function calculateArea() {
+            const inputs = document.querySelectorAll('.area-point-input');
+            const resultBox = document.getElementById('areaResult');
+            let coords = [];
+
+            for (let input of inputs) {
+                const val = input.value.trim();
+                if (val !== '') {
+                    const pt = findPointById(val);
+                    if (!pt) {
+                        resultBox.style.display = 'block';
+                        resultBox.style.color = '#c0392b';
+                        resultBox.style.background = '#fadbd8';
+                        resultBox.innerHTML = `خطأ: النقطة (${val}) غير موجودة!`;
+                        return;
+                    }
+                    coords.push([parseFloat(pt.longitude), parseFloat(pt.latitude)]);
+                }
+            }
+
+            if (coords.length < 3) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ: يجب إدخال 3 نقاط صحيحة على الأقل لحساب المساحة!';
+                return;
+            }
+
+            coords.push(coords[0]);
+
+            try {
+                const polygon = turf.polygon([coords]);
+                const areaSqMeters = turf.area(polygon);
+                const areaHectares = areaSqMeters / 10000;
+
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#117a65';
+                resultBox.style.background = '#e8f8f5';
+                resultBox.innerHTML = `مساحة المضلع المحسوبة:<br>
+                    📐 <b>${areaSqMeters.toFixed(2)}</b> متر مربع<br>
+                    🌾 <b>${areaHectares.toFixed(4)}</b> هكتار`;
+
+                measurementLayer.clearLayers();
+                L.polygon(coords.map(c => [c[1], c[0]]), {color: '#8e44ad', fillColor: '#9b59b6', fillOpacity: 0.4, weight: 3}).addTo(measurementLayer);
+                map.fitBounds(L.polygon(coords.map(c => [c[1], c[0]])).getBounds());
+
+            } catch (e) {
+                resultBox.style.display = 'block';
+                resultBox.style.color = '#c0392b';
+                resultBox.style.background = '#fadbd8';
+                resultBox.innerHTML = 'خطأ في حساب هندسة المضلع (تأكد من تسلسل النقاط).';
+            }
+        }
+
+        // التشغيل الأولي
+        loadPoints();
+    </script>
+</body>
+</html>

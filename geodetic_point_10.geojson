@@ -1,0 +1,17 @@
+{
+"type": "FeatureCollection",
+"name": "geodetic_point_10",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{"type":"Feature","properties":{"fid":1,"Point_ID":"P-001","Name":"Station_Alpha","Latitude":24.7136,"Longitude":46.6753,"Elevation_m":612.5,"Type":"GPS Point","Description":"Main control point near city center"},"geometry":{"type":"Point","coordinates":[46.6753,24.7136]}},
+{"type":"Feature","properties":{"fid":2,"Point_ID":"P-002","Name":"Station_Beta","Latitude":24.725,"Longitude":46.6321,"Elevation_m":598.0,"Type":"Benchmark","Description":"Secondary leveling point on main road"},"geometry":{"type":"Point","coordinates":[46.6321,24.725]}},
+{"type":"Feature","properties":{"fid":3,"Point_ID":"P-003","Name":"Station_Gamma","Latitude":24.6892,"Longitude":46.711,"Elevation_m":625.3,"Type":"GPS Point","Description":"High precision station on hill top"},"geometry":{"type":"Point","coordinates":[46.711,24.6892]}},
+{"type":"Feature","properties":{"fid":4,"Point_ID":"P-004","Name":"Station_Delta","Latitude":24.7501,"Longitude":46.654,"Elevation_m":585.2,"Type":"Benchmark","Description":"Leveling point near bridge"},"geometry":{"type":"Point","coordinates":[46.654,24.7501]}},
+{"type":"Feature","properties":{"fid":5,"Point_ID":"P-005","Name":"Station_Omega","Latitude":24.673,"Longitude":46.619,"Elevation_m":605.7,"Type":"GPS Point","Description":"Base station for local survey"},"geometry":{"type":"Point","coordinates":[46.619,24.673]}},
+{"type":"Feature","properties":{"fid":6,"Point_ID":"P-006","Name":"Station_Theta","Latitude":24.731,"Longitude":46.6902,"Elevation_m":618.4,"Type":"Benchmark","Description":"Leveling benchmark near public park"},"geometry":{"type":"Point","coordinates":[46.6902,24.731]}},
+{"type":"Feature","properties":{"fid":7,"Point_ID":"P-007","Name":"Station_Lambda","Latitude":24.6955,"Longitude":46.6455,"Elevation_m":592.1,"Type":"GPS Point","Description":"Geodetic pillar on university roof"},"geometry":{"type":"Point","coordinates":[46.6455,24.6955]}},
+{"type":"Feature","properties":{"fid":8,"Point_ID":"P-008","Name":"Station_Sigma","Latitude":24.762,"Longitude":46.681,"Elevation_m":579.8,"Type":"Benchmark","Description":"Secondary benchmark near industrial zone"},"geometry":{"type":"Point","coordinates":[46.681,24.762]}},
+{"type":"Feature","properties":{"fid":9,"Point_ID":"P-009","Name":"Station_Zeta","Latitude":24.661,"Longitude":46.668,"Elevation_m":630.0,"Type":"GPS Point","Description":"Reference station on southern highway"},"geometry":{"type":"Point","coordinates":[46.668,24.661]}},
+{"type":"Feature","properties":{"fid":10,"Point_ID":"P-010","Name":"Station_Kappa","Latitude":24.718,"Longitude":46.7235,"Elevation_m":610.2,"Type":"Benchmark","Description":"Leveling point near eastern district"},"geometry":{"type":"Point","coordinates":[46.7235,24.718]}}
+]
+}
