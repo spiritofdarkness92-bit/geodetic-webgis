@@ -763,8 +763,10 @@
             const query = document.getElementById('transPointInput').value.trim();
             const pt = findPointById(query);
             if (pt) {
-                document.getElementById('transLat').value = pt.latitude;
-                document.getElementById('transLon').value = pt.longitude;
+                const lat = pt.latitude !== undefined ? pt.latitude : pt.lat;
+                const lon = pt.longitude !== undefined ? pt.longitude : pt.lon;
+                document.getElementById('transLat').value = lat;
+                document.getElementById('transLon').value = lon;
             }
         }
 
@@ -914,11 +916,17 @@
                 alert('لا توجد نقاط للتصدير!');
                 return;
             }
-            const features = allPointsData.map(p => ({
-                type: "Feature",
-                geometry: { type: "Point", coordinates: [parseFloat(p.longitude), parseFloat(p.latitude)] },
-                properties: { point_id: p.point_id, name: p.name, elevation: p.elevation_m, type: p.type, description: p.description }
-            }));
+            const features = allPointsData.map(p => {
+                const lat = parseFloat(p.latitude !== undefined ? p.latitude : p.lat);
+                const lon = parseFloat(p.longitude !== undefined ? p.longitude : p.lon);
+                const elev = p.elevation_m !== undefined ? p.elevation_m : (p.elevation !== undefined ? p.elevation : p.z);
+                const pId = p.point_id !== undefined ? p.point_id : p.id;
+                return {
+                    type: "Feature",
+                    geometry: { type: "Point", coordinates: [lon, lat] },
+                    properties: { point_id: pId, name: p.name, elevation: elev, type: p.type, description: p.description }
+                };
+            });
             const geojson = { type: "FeatureCollection", features: features };
             const blob = new Blob([JSON.stringify(geojson, null, 2)], { type: 'application/json;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -938,7 +946,11 @@
             }
             let csv = 'Point ID,Name,Latitude,Longitude,Elevation,Type,Description\n';
             allPointsData.forEach(p => {
-                csv += `${p.point_id},"${p.name || ''}",${p.latitude},${p.longitude},${p.elevation_m || ''},"${p.type || ''}","${p.description || ''}"\n`;
+                const lat = p.latitude !== undefined ? p.latitude : p.lat;
+                const lon = p.longitude !== undefined ? p.longitude : p.lon;
+                const elev = p.elevation_m !== undefined ? p.elevation_m : (p.elevation !== undefined ? p.elevation : p.z);
+                const pId = p.point_id !== undefined ? p.point_id : p.id;
+                csv += `${pId},"${p.name || ''}",${lat},${lon},${elev !== null && elev !== undefined ? elev : ''},"${p.type || ''}","${p.description || ''}"\n`;
             });
             const blob = new Blob(["\ufeff" + csv], { type: 'text/csv;charset=utf-8;' });
             const url = URL.createObjectURL(blob);
@@ -965,7 +977,11 @@
             html += `<h2 style="text-align:center;font-family:Tahoma;">تقرير نقاط التحكم الجيوديسية التفاعلي</h2>`;
             html += `<table><tr><th>ID</th><th>الاسم</th><th>خط العرض</th><th>خط الطول</th><th>الارتفاع (م)</th><th>النوع</th><th>الوصف</th></tr>`;
             allPointsData.forEach(p => {
-                html += `<tr><td>${p.point_id}</td><td>${p.name || '-'}</td><td>${p.latitude}</td><td>${p.longitude}</td><td>${p.elevation_m || '-'}</td><td>${p.type || '-'}</td><td>${p.description || '-'}</td></tr>`;
+                const lat = p.latitude !== undefined ? p.latitude : p.lat;
+                const lon = p.longitude !== undefined ? p.longitude : p.lon;
+                const elev = p.elevation_m !== undefined ? p.elevation_m : (p.elevation !== undefined ? p.elevation : p.z);
+                const pId = p.point_id !== undefined ? p.point_id : p.id;
+                html += `<tr><td>${pId}</td><td>${p.name || '-'}</td><td>${lat}</td><td>${lon}</td><td>${elev !== null && elev !== undefined ? elev : '-'}</td><td>${p.type || '-'}</td><td>${p.description || '-'}</td></tr>`;
             });
             html += `</table><script>window.onload = function() { window.print(); };<\/script></body></html>`;
             win.document.write(html);
@@ -982,21 +998,27 @@
             }
 
             allPointsData.forEach(p => {
+                const pId = p.point_id !== undefined ? p.point_id : p.id;
+                const pName = p.name || ('نقطة ' + pId);
+                const pLat = p.latitude !== undefined ? p.latitude : p.lat;
+                const pLon = p.longitude !== undefined ? p.longitude : p.lon;
+                const pElev = p.elevation_m !== undefined ? p.elevation_m : (p.elevation !== undefined ? p.elevation : p.z);
+
                 const card = document.createElement('div');
                 card.className = 'point-card';
                 card.innerHTML = `
                     <div class="point-header" onclick="togglePointDetails(this)">
-                        <span>📍 ${p.name || ('نقطة ' + p.point_id)} (ID: ${p.point_id})</span>
+                        <span>📍 ${pName} (ID: ${pId})</span>
                         <span>▼</span>
                     </div>
                     <div class="point-details">
-                        <b>خط العرض:</b> ${p.latitude}<br>
-                        <b>خط الطول:</b> ${p.longitude}<br>
-                        <b>الارتفاع:</b> ${p.elevation_m ? p.elevation_m + ' متر' : 'غير متوفر'}<br>
+                        <b>خط العرض:</b> ${pLat}<br>
+                        <b>خط الطول:</b> ${pLon}<br>
+                        <b>الارتفاع:</b> ${pElev !== null && pElev !== undefined ? pElev + ' متر' : 'غير متوفر'}<br>
                         <b>النوع:</b> ${p.type || 'جيوديسي'}<br>
                         <b>الوصف:</b> ${p.description || 'لا يوجد'}<br><br>
-                        <button class="edit-btn" onclick="editPoint(${p.point_id})">تعديل النقطة</button>
-                        <button class="delete-btn" onclick="deletePoint(${p.point_id}, '${p.name || p.point_id}')">حذف النقطة</button>
+                        <button class="edit-btn" onclick="editPoint(${pId})">تعديل النقطة</button>
+                        <button class="delete-btn" onclick="deletePoint(${pId}, '${pName}')">حذف النقطة</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -1010,13 +1032,17 @@
 
         // وظيفة تعديل بيانات النقطة الحالية
         function editPoint(pointId) {
-            const p = allPointsData.find(item => item.point_id === pointId);
+            const p = allPointsData.find(item => (item.point_id === pointId || item.id === pointId));
             if (!p) return;
 
             const newName = prompt('تعديل اسم النقطة:', p.name || '');
-            const newLat = prompt('تعديل خط العرض (Latitude):', p.latitude);
-            const newLon = prompt('تعديل خط الطول (Longitude):', p.longitude);
-            const newElev = prompt('تعديل الارتفاع بالمتر:', p.elevation_m || '');
+            const currLat = p.latitude !== undefined ? p.latitude : p.lat;
+            const currLon = p.longitude !== undefined ? p.longitude : p.lon;
+            const currElev = p.elevation_m !== undefined ? p.elevation_m : (p.elevation !== undefined ? p.elevation : p.z);
+
+            const newLat = prompt('تعديل خط العرض (Latitude):', currLat);
+            const newLon = prompt('تعديل خط الطول (Longitude):', currLon);
+            const newElev = prompt('تعديل الارتفاع بالمتر:', currElev !== null && currElev !== undefined ? currElev : '');
             const newType = prompt('تعديل النوع (Primary / Secondary):', p.type || '');
             const newDesc = prompt('تعديل الوصف:', p.description || '');
 
@@ -1025,12 +1051,17 @@
                 return;
             }
 
+            const elevVal = newElev ? parseFloat(newElev) : null;
             const updatedPoint = {
-                point_id: p.point_id,
+                point_id: pointId,
+                id: pointId,
                 name: newName || p.name,
                 latitude: parseFloat(newLat),
+                lat: parseFloat(newLat),
                 longitude: parseFloat(newLon),
-                elevation_m: newElev ? parseFloat(newElev) : null,
+                lon: parseFloat(newLon),
+                elevation_m: elevVal,
+                elevation: elevVal,
                 type: newType || p.type,
                 description: newDesc || p.description
             };
@@ -1130,17 +1161,27 @@
 
                             if (!coords || coords.length < 2) continue;
 
+                            const randomId = Math.floor(Math.random() * 900000) + 100000;
+                            const pId = props.point_id ? parseInt(props.point_id) : (props.id ? parseInt(props.id) : randomId);
+                            const pLat = parseFloat(coords[1]);
+                            const pLon = parseFloat(coords[0]);
+                            const pElev = props.elevation !== undefined ? parseFloat(props.elevation) : (props.elevation_m !== undefined ? parseFloat(props.elevation_m) : (props.z !== undefined ? parseFloat(props.z) : null));
+
                             const pointData = {
-                                point_id: props.point_id ? parseInt(props.point_id) : (Math.floor(Math.random() * 900000) + 100000),
+                                point_id: pId,
+                                id: pId,
                                 name: props.name || props.ID || props.id || ('G_' + (i + 1)),
-                                latitude: parseFloat(coords[1]),
-                                longitude: parseFloat(coords[0]),
-                                elevation_m: props.elevation !== undefined ? parseFloat(props.elevation) : (props.elevation_m !== undefined ? parseFloat(props.elevation_m) : null),
+                                latitude: pLat,
+                                lat: pLat,
+                                longitude: pLon,
+                                lon: pLon,
+                                elevation_m: pElev,
+                                elevation: pElev,
                                 type: props.type || 'Secondary',
                                 description: props.description || 'مستورد من GeoJSON'
                             };
 
-                            if (!isNaN(pointData.latitude) && !isNaN(pointData.longitude)) {
+                            if (!isNaN(pLat) && !isNaN(pLon)) {
                                 newPoints.push(pointData);
                                 count++;
 
@@ -1205,12 +1246,19 @@
                             }
 
                             if (!isNaN(lat) && !isNaN(lon)) {
+                                const pId = parseInt(cols[0]) || id;
+                                const pElev = cols[4] ? parseFloat(cols[4]) : elev;
+
                                 const pointData = {
-                                    point_id: parseInt(cols[0]) || id,
+                                    point_id: pId,
+                                    id: pId,
                                     name: cols[1] || name,
                                     latitude: lat,
+                                    lat: lat,
                                     longitude: lon,
-                                    elevation_m: cols[4] ? parseFloat(cols[4]) : elev,
+                                    lon: lon,
+                                    elevation_m: pElev,
+                                    elevation: pElev,
                                     type: 'Secondary',
                                     description: 'مستورد من CSV'
                                 };
@@ -1262,12 +1310,21 @@
                 return;
             }
 
+            const parsedId = parseInt(id);
+            const parsedLat = parseFloat(lat);
+            const parsedLon = parseFloat(lon);
+            const elevVal = elevation ? parseFloat(elevation) : null;
+
             const newPoint = {
-                point_id: parseInt(id),
+                point_id: parsedId,
+                id: parsedId,
                 name: name || ('G' + id),
-                latitude: parseFloat(lat),
-                longitude: parseFloat(lon),
-                elevation_m: elevation ? parseFloat(elevation) : null,
+                latitude: parsedLat,
+                lat: parsedLat,
+                longitude: parsedLon,
+                lon: parsedLon,
+                elevation_m: elevVal,
+                elevation: elevVal,
                 type: type || 'Secondary',
                 description: description || ''
             };
@@ -1369,8 +1426,9 @@
                     secondaryCount++;
                 }
 
-                if (p.elevation_m !== null && p.elevation_m !== undefined && !isNaN(p.elevation_m)) {
-                    elevations.push(parseFloat(p.elevation_m));
+                const elev = p.elevation_m !== undefined ? p.elevation_m : (p.elevation !== undefined ? p.elevation : p.z);
+                if (elev !== null && elev !== undefined && !isNaN(parseFloat(elev))) {
+                    elevations.push(parseFloat(elev));
                 }
             });
 
@@ -1395,8 +1453,12 @@
             markersMap = {};
             if (!Array.isArray(data)) return;
             data.forEach(point => {
-                const lat = parseFloat(point.latitude);
-                const lon = parseFloat(point.longitude);
+                const lat = parseFloat(point.latitude !== undefined ? point.latitude : point.lat);
+                const lon = parseFloat(point.longitude !== undefined ? point.longitude : point.lon);
+                const elev = point.elevation_m !== undefined ? point.elevation_m : (point.elevation !== undefined ? point.elevation : point.z);
+                const pId = point.point_id !== undefined ? point.point_id : point.id;
+                const pName = point.name || pId;
+
                 if (!isNaN(lat) && !isNaN(lon)) {
                     let iconToUse = blueIcon;
                     const pType = (point.type || '').toLowerCase();
@@ -1408,10 +1470,10 @@
                     
                     marker.bindPopup(`
                         <div style="text-align: right; direction: rtl;">
-                            <b>اسم النقطة:</b> ${point.name || point.point_id}<br>
+                            <b>اسم النقطة:</b> ${pName}<br>
                             <b>خط العرض:</b> ${lat}<br>
                             <b>خط الطول:</b> ${lon}<br>
-                            <b>الارتفاع:</b> ${point.elevation_m ? point.elevation_m + ' متر' : 'غير متوفر'}<br>
+                            <b>الارتفاع:</b> ${elev !== null && elev !== undefined ? elev + ' متر' : 'غير متوفر'}<br>
                             <b>النوع:</b> ${point.type || 'جيوديسي'}<br>
                             <b>الوصف:</b> ${point.description || 'لا يوجد'}<br>
                             <i style="color:#e74c3c; font-size:11px;">💡 انقر بزر الماوس الأيمن لتحديد النقطة للقياس الهندسي</i>
@@ -1426,7 +1488,7 @@
                     markersLayer.addLayer(marker);
                     
                     if (point.name) markersMap[point.name.toLowerCase()] = {marker, lat, lon, point};
-                    if (point.point_id) markersMap[point.point_id.toString().toLowerCase()] = {marker, lat, lon, point};
+                    if (pId) markersMap[pId.toString().toLowerCase()] = {marker, lat, lon, point};
                 }
             });
         }
@@ -1434,7 +1496,8 @@
         function handleMarkerRightClick(point, marker) {
             marker.setIcon(redIcon);
 
-            if (!rightClickSelectedPoints.some(p => p.point_id === point.point_id)) {
+            const pId = point.point_id !== undefined ? point.point_id : point.id;
+            if (!rightClickSelectedPoints.some(p => (p.point_id === pId || p.id === pId))) {
                 rightClickSelectedPoints.push(point);
             }
 
@@ -1442,13 +1505,18 @@
             const content = document.getElementById('rightClickContent');
             box.style.display = 'block';
 
-            let namesList = rightClickSelectedPoints.map(p => p.name || p.point_id).join(' ➔ ');
+            let namesList = rightClickSelectedPoints.map(p => p.name || (p.point_id !== undefined ? p.point_id : p.id)).join(' ➔ ');
 
             if (rightClickSelectedPoints.length === 2) {
                 const p1 = rightClickSelectedPoints[0];
                 const p2 = rightClickSelectedPoints[1];
-                const l1 = L.latLng(p1.latitude, p1.longitude);
-                const l2 = L.latLng(p2.latitude, p2.longitude);
+                const lat1 = p1.latitude !== undefined ? p1.latitude : p1.lat;
+                const lon1 = p1.longitude !== undefined ? p1.longitude : p1.lon;
+                const lat2 = p2.latitude !== undefined ? p2.latitude : p2.lat;
+                const lon2 = p2.longitude !== undefined ? p2.longitude : p2.lon;
+
+                const l1 = L.latLng(lat1, lon1);
+                const l2 = L.latLng(lat2, lon2);
                 const dist = l1.distanceTo(l2);
 
                 content.innerHTML = `
@@ -1460,7 +1528,11 @@
                 L.polyline([l1, l2], {color: '#e74c3c', weight: 4, dashArray: '5, 5'}).addTo(measurementLayer);
 
             } else if (rightClickSelectedPoints.length >= 3) {
-                let coords = rightClickSelectedPoints.map(p => [parseFloat(p.longitude), parseFloat(p.latitude)]);
+                let coords = rightClickSelectedPoints.map(p => {
+                    const lat = p.latitude !== undefined ? p.latitude : p.lat;
+                    const lon = p.longitude !== undefined ? p.longitude : p.lon;
+                    return [parseFloat(lon), parseFloat(lat)];
+                });
                 coords.push(coords[0]);
 
                 try {
@@ -1511,8 +1583,13 @@
                 return;
             }
 
-            const pt1 = turf.point([parseFloat(p1.longitude), parseFloat(p1.latitude)]);
-            const pt2 = turf.point([parseFloat(p2.longitude), parseFloat(p2.latitude)]);
+            const lat1 = p1.latitude !== undefined ? p1.latitude : p1.lat;
+            const lon1 = p1.longitude !== undefined ? p1.longitude : p1.lon;
+            const lat2 = p2.latitude !== undefined ? p2.latitude : p2.lat;
+            const lon2 = p2.longitude !== undefined ? p2.longitude : p2.lon;
+
+            const pt1 = turf.point([parseFloat(lon1), parseFloat(lat1)]);
+            const pt2 = turf.point([parseFloat(lon2), parseFloat(lat2)]);
 
             let rawBearing = turf.bearing(pt1, pt2);
             let forwardAzimuth = (rawBearing + 360) % 360;
@@ -1521,13 +1598,13 @@
             resultBox.style.display = 'block';
             resultBox.style.color = '#117a65';
             resultBox.style.background = '#e8f8f5';
-            resultBox.innerHTML = `نتائج الانحراف بين (${p1.name || p1.point_id}) و (${p2.name || p2.point_id}):<br>
+            resultBox.innerHTML = `نتائج الانحراف بين (${p1.name || (p1.point_id !== undefined ? p1.point_id : p1.id)}) و (${p2.name || (p2.point_id !== undefined ? p2.point_id : p2.id)}):<br>
                 🧭 <b>الانحراف الأمامي (Forward):</b> ${forwardAzimuth.toFixed(2)}°<br>
                 🔄 <b>الانحراف الخلفي (Back):</b> ${backAzimuth.toFixed(2)}°`;
 
             measurementLayer.clearLayers();
-            const l1 = L.latLng(parseFloat(p1.latitude), parseFloat(p1.longitude));
-            const l2 = L.latLng(parseFloat(p2.latitude), parseFloat(p2.longitude));
+            const l1 = L.latLng(parseFloat(lat1), parseFloat(lon1));
+            const l2 = L.latLng(parseFloat(lat2), parseFloat(lon2));
             L.polyline([l1, l2], {color: '#2980b9', weight: 4, dashArray: '5, 5'}).addTo(measurementLayer);
             map.fitBounds([l1, l2]);
         }
@@ -1555,13 +1632,18 @@
                 return;
             }
 
-            const pointGeo = turf.point([parseFloat(ptData.longitude), parseFloat(ptData.latitude)]);
+            const lat = ptData.latitude !== undefined ? ptData.latitude : ptData.lat;
+            const lon = ptData.longitude !== undefined ? ptData.longitude : ptData.lon;
+
+            const pointGeo = turf.point([parseFloat(lon), parseFloat(lat)]);
             const buffered = turf.buffer(pointGeo, radius, {units: 'meters'});
 
             let countInside = 0;
             if (Array.isArray(allPointsData)) {
                 allPointsData.forEach(p => {
-                    const pGeo = turf.point([parseFloat(p.longitude), parseFloat(p.latitude)]);
+                    const pLat = p.latitude !== undefined ? p.latitude : p.lat;
+                    const pLon = p.longitude !== undefined ? p.longitude : p.lon;
+                    const pGeo = turf.point([parseFloat(pLon), parseFloat(pLat)]);
                     if (turf.booleanPointInPolygon(pGeo, buffered)) {
                         countInside++;
                     }
@@ -1573,7 +1655,7 @@
             resultBox.style.display = 'block';
             resultBox.style.color = '#117a65';
             resultBox.style.background = '#e8f8f5';
-            resultBox.innerHTML = `نطاق الحماية للنقطة (${ptData.name || ptData.point_id}) [${radius} متر]:<br>
+            resultBox.innerHTML = `نطاق الحماية للنقطة (${ptData.name || (ptData.point_id !== undefined ? ptData.point_id : ptData.id)}) [${radius} متر]:<br>
                 🌾 <b>مساحة النطاق:</b> ${areaSqMeters.toFixed(2)} م²<br>
                 📍 <b>عدد النقاط داخله:</b> ${countInside} نقطة`;
 
@@ -1582,7 +1664,7 @@
                 style: { color: '#8e44ad', fillColor: '#9b59b6', fillOpacity: 0.3, weight: 2 }
             }).addTo(measurementLayer);
 
-            const l = L.latLng(parseFloat(ptData.latitude), parseFloat(ptData.longitude));
+            const l = L.latLng(parseFloat(lat), parseFloat(lon));
             map.setView(l, 15);
         }
 
@@ -1605,8 +1687,8 @@
                 return;
             }
 
-            const z1 = parseFloat(p1.elevation_m);
-            const z2 = parseFloat(p2.elevation_m);
+            const z1 = parseFloat(p1.elevation_m !== undefined ? p1.elevation_m : (p1.elevation !== undefined ? p1.elevation : p1.z));
+            const z2 = parseFloat(p2.elevation_m !== undefined ? p2.elevation_m : (p2.elevation !== undefined ? p2.elevation : p2.z));
 
             if (isNaN(z1) || isNaN(z2)) {
                 resultBox.style.display = 'block';
@@ -1617,8 +1699,13 @@
                 return;
             }
 
-            const l1 = L.latLng(parseFloat(p1.latitude), parseFloat(p1.longitude));
-            const l2 = L.latLng(parseFloat(p2.latitude), parseFloat(p2.longitude));
+            const lat1 = p1.latitude !== undefined ? p1.latitude : p1.lat;
+            const lon1 = p1.longitude !== undefined ? p1.longitude : p1.lon;
+            const lat2 = p2.latitude !== undefined ? p2.latitude : p2.lat;
+            const lon2 = p2.longitude !== undefined ? p2.longitude : p2.lon;
+
+            const l1 = L.latLng(parseFloat(lat1), parseFloat(lon1));
+            const l2 = L.latLng(parseFloat(lat2), parseFloat(lon2));
             const totalDist = l1.distanceTo(l2);
             const deltaZ = z2 - z1;
             const slopePercent = totalDist !== 0 ? (deltaZ / totalDist) * 100 : 0;
@@ -1627,7 +1714,7 @@
             resultBox.style.display = 'block';
             resultBox.style.color = '#117a65';
             resultBox.style.background = '#e8f8f5';
-            resultBox.innerHTML = `القطاع الطولي بين (${p1.name || p1.point_id}) و (${p2.name || p2.point_id}):<br>
+            resultBox.innerHTML = `القطاع الطولي بين (${p1.name || (p1.point_id !== undefined ? p1.point_id : p1.id)}) و (${p2.name || (p2.point_id !== undefined ? p2.point_id : p2.id)}):<br>
                 📏 <b>المسافة الأفقية:</b> ${totalDist.toFixed(2)} م<br>
                 📈 <b>فرق الارتفاع (ΔZ):</b> ${deltaZ.toFixed(2)} م<br>
                 📐 <b>نسبة الميل (Slope):</b> ${slopePercent.toFixed(2)}% (${angleDeg.toFixed(2)}°)`;
@@ -1728,16 +1815,19 @@
                     const userLat = position.coords.latitude;
                     const userLon = position.coords.longitude;
 
+                    const tLat = targetPt.latitude !== undefined ? targetPt.latitude : targetPt.lat;
+                    const tLon = targetPt.longitude !== undefined ? targetPt.longitude : targetPt.lon;
+
                     const userLatLng = L.latLng(userLat, userLon);
-                    const targetLatLng = L.latLng(parseFloat(targetPt.latitude), parseFloat(targetPt.longitude));
+                    const targetLatLng = L.latLng(parseFloat(tLat), parseFloat(tLon));
 
                     const distMeters = userLatLng.distanceTo(targetLatLng);
                     const turfUser = turf.point([userLon, userLat]);
-                    const turfTarget = turf.point([parseFloat(targetPt.longitude), parseFloat(targetPt.latitude)]);
+                    const turfTarget = turf.point([parseFloat(tLon), parseFloat(tLat)]);
                     const rawBearing = turf.bearing(turfUser, turfTarget);
                     const forwardAzimuth = (rawBearing + 360) % 360;
 
-                    resultBox.innerHTML = `🛰️ <b>التوجيه الميداني المباشر للنقطة (${targetPt.name || targetPt.point_id}):</b><br>
+                    resultBox.innerHTML = `🛰️ <b>التوجيه الميداني المباشر للنقطة (${targetPt.name || (targetPt.point_id !== undefined ? targetPt.point_id : targetPt.id)}):</b><br>
                         📍 <b>موقعك الحالي:</b> ${userLat.toFixed(5)}, ${userLon.toFixed(5)}<br>
                         📏 <b>المسافة المتبقية:</b> ${distMeters.toFixed(2)} متر<br>
                         🧭 <b>اتجاه الانحراف (Azimuth):</b> ${forwardAzimuth.toFixed(2)}°`;
@@ -1813,9 +1903,9 @@
             if (!Array.isArray(allPointsData)) return;
             const filtered = allPointsData.filter(point => {
                 const name = (point.name || '').toString().toLowerCase();
-                const id = (point.point_id || '').toString().toLowerCase();
+                const pId = (point.point_id !== undefined ? point.point_id : point.id || '').toString().toLowerCase();
                 const type = (point.type || '').toString().toLowerCase();
-                return name.includes(query) || id.includes(query) || type.includes(query);
+                return name.includes(query) || pId.includes(query) || type.includes(query);
             });
             displayMarkers(filtered);
         }
@@ -1870,10 +1960,11 @@
 
         function findPointById(query) {
             if (!Array.isArray(allPointsData)) return null;
-            return allPointsData.find(p => 
-                (p.name && p.name.toString().toLowerCase() === query.toLowerCase()) || 
-                (p.point_id && p.point_id.toString().toLowerCase() === query.toLowerCase())
-            );
+            return allPointsData.find(p => {
+                const pId = p.point_id !== undefined ? p.point_id : p.id;
+                return (p.name && p.name.toString().toLowerCase() === query.toLowerCase()) || 
+                       (pId !== undefined && pId.toString().toLowerCase() === query.toLowerCase());
+            });
         }
 
         function calculateDistance() {
@@ -1892,8 +1983,13 @@
                 return;
             }
 
-            const latlng1 = L.latLng(parseFloat(p1.latitude), parseFloat(p1.longitude));
-            const latlng2 = L.latLng(parseFloat(p2.latitude), parseFloat(p2.longitude));
+            const lat1 = p1.latitude !== undefined ? p1.latitude : p1.lat;
+            const lon1 = p1.longitude !== undefined ? p1.longitude : p1.lon;
+            const lat2 = p2.latitude !== undefined ? p2.latitude : p2.lat;
+            const lon2 = p2.longitude !== undefined ? p2.longitude : p2.lon;
+
+            const latlng1 = L.latLng(parseFloat(lat1), parseFloat(lon1));
+            const latlng2 = L.latLng(parseFloat(lat2), parseFloat(lon2));
 
             const distanceMeters = latlng1.distanceTo(latlng2);
             const distanceKm = distanceMeters / 1000;
@@ -1901,7 +1997,7 @@
             resultBox.style.display = 'block';
             resultBox.style.color = '#117a65';
             resultBox.style.background = '#e8f8f5';
-            resultBox.innerHTML = `المسافة بين (${p1.name || p1.point_id}) و (${p2.name || p2.point_id}):<br>
+            resultBox.innerHTML = `المسافة بين (${p1.name || (p1.point_id !== undefined ? p1.point_id : p1.id)}) و (${p2.name || (p2.point_id !== undefined ? p2.point_id : p2.id)}):<br>
                 📏 <b>${distanceMeters.toFixed(2)}</b> متر (${distanceKm.toFixed(3)} كم)`;
 
             measurementLayer.clearLayers();
@@ -1925,7 +2021,9 @@
                         resultBox.innerHTML = `خطأ: النقطة (${val}) غير موجودة!`;
                         return;
                     }
-                    coords.push([parseFloat(pt.longitude), parseFloat(pt.latitude)]);
+                    const lat = pt.latitude !== undefined ? pt.latitude : pt.lat;
+                    const lon = pt.longitude !== undefined ? pt.longitude : pt.lon;
+                    coords.push([parseFloat(lon), parseFloat(lat)]);
                 }
             }
 
