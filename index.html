@@ -15,6 +15,7 @@
             margin: 0;
             padding: 0;
             font-family: Tahoma, sans-serif;
+            transition: all 0.3s ease;
         }
         #map {
             width: 100vw;
@@ -73,6 +74,12 @@
         }
         .profile-btn:hover {
             background: #2c3e50 !important;
+        }
+        .mobile-toggle-btn {
+            background: #8e44ad !important;
+        }
+        .mobile-toggle-btn:hover {
+            background: #732d91 !important;
         }
 
         /* لوحة الإحصائيات العلوية اليسرى */
@@ -244,7 +251,7 @@
             direction: rtl;
         }
 
-        /* نافذة إضافة نقطة جديدة بواسطة نموذج */
+        /* نافذة نموذج إضافة نقطة جديدة الذكية */
         .add-point-modal {
             position: absolute;
             top: 80px;
@@ -530,9 +537,27 @@
         .add-btn:hover {
             background: #219653;
         }
+
+        /* تخصيص وضع نسخة الجوال (Mobile Mode Layout) */
+        body.mobile-mode .control-panel {
+            top: 5px; right: 5px; left: 5px; width: auto; flex-direction: column; align-items: stretch; padding: 8px;
+        }
+        body.mobile-mode .control-panel input, body.mobile-mode .control-panel button {
+            width: 100%; margin-bottom: 4px;
+        }
+        body.mobile-mode .stats-panel {
+            top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; font-size: 11px; padding: 8px;
+        }
+        body.mobile-mode .geo-tool-icon-btn,
+        body.mobile-mode .transform-tool-btn,
+        body.mobile-mode .query-tool-btn,
+        body.mobile-mode .basemap-tool-btn {
+            position: relative !important; top: auto !important; right: auto !important; left: auto !important;
+            margin: 3px 0; width: 100%; display: block; text-align: center;
+        }
     </style>
 </head>
-<body>
+<body id="mainBody">
 
     <!-- لوحة التحكم العلوية -->
     <div class="control-panel">
@@ -541,6 +566,7 @@
         <button class="goto-btn" onclick="goToPoint()">Go To 🎯</button>
         <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
         <button class="profile-btn" onclick="openProfileModal()">👤 الملف الشخصي</button>
+        <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
         
         <!-- أزرار رفع الملفات من الجهاز (GeoJSON و CSV) -->
         <input type="file" id="geoFileImport" accept=".geojson,.json" style="display:none;" onchange="importGeoJSONFile(event)">
@@ -567,7 +593,7 @@
         <button class="tool-btn" style="width:100%; background:#27ae60;" onclick="saveProfileChanges()">حفظ وتحديث الصلاحيات</button>
     </div>
 
-    <!-- نافذة نموذج إضافة نقطة جديدة -->
+    <!-- نافذة نموذج إضافة نقطة جديدة الذكية بخيارين والقفز بالـ Enter -->
     <div class="add-point-modal" id="addPointModal">
         <button class="close-modal" onclick="document.getElementById('addPointModal').style.display='none'">✕</button>
         <h4>إضافة نقطة تحكم جديدة</h4>
@@ -597,9 +623,12 @@
         </div>
         <div class="form-group">
             <label>الوصف (Description):</label>
-            <input type="text" id="newDesc" placeholder="وصف النقطة..." onkeydown="handleFormEnter(event, 'submitNewPointBtn')">
+            <input type="text" id="newDesc" placeholder="وصف النقطة..." onkeydown="handleFormEnter(event, 'saveAndCloseBtn')">
         </div>
-        <button class="tool-btn" id="submitNewPointBtn" style="width:100%; background:#27ae60;" onclick="submitNewPointForm()">إضافة النقطة 🚀</button>
+        <div style="display: flex; gap: 8px; margin-top: 10px;">
+            <button class="tool-btn" id="saveAndCloseBtn" style="flex:1; background:#27ae60;" onclick="submitNewPoint(true)">💾 حفظ وإغلاق</button>
+            <button class="tool-btn" style="flex:1; background:#2980b9;" onclick="submitNewPoint(false)">➕ إضافة نقطة أخرى</button>
+        </div>
     </div>
 
     <!-- لوحة إحصائيات المشروع (العلوية اليسرى) -->
@@ -854,6 +883,14 @@
             document.getElementById('profileModal').style.display = 'none';
         }
 
+        // تفعيل وضع نسخة الجوال
+        function toggleMobileView() {
+            const body = document.getElementById('mainBody');
+            body.classList.toggle('mobile-mode');
+            const isMobile = body.classList.contains('mobile-mode');
+            alert(isMobile ? 'تم تفعيل نسخة الجوال بنجاح!' : 'تم العودة للوضع العادي!');
+        }
+
         // إنشاء الخريطة وتحديد مركز العرض ومستوى التقريب
         const map = L.map('map').setView([26.8206, 30.8025], 6);
 
@@ -928,21 +965,31 @@
         function toggleGeoModal() {
             const modal = document.getElementById('geoModal');
             modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
-            document.getElementById('queryModal').style.display = 'none';
-            document.getElementById('transformModal').style.display = 'none';
-            document.getElementById('basemapDropdown').style.display = 'none';
-            document.getElementById('profileModal').style.display = 'none';
-            document.getElementById('addPointModal').style.display = 'none';
+            closeAllModalsExcept('geoModal');
         }
 
         function toggleTransformModal() {
             const modal = document.getElementById('transformModal');
             modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
-            document.getElementById('geoModal').style.display = 'none';
-            document.getElementById('queryModal').style.display = 'none';
-            document.getElementById('basemapDropdown').style.display = 'none';
-            document.getElementById('profileModal').style.display = 'none';
-            document.getElementById('addPointModal').style.display = 'none';
+            closeAllModalsExcept('transformModal');
+        }
+
+        function toggleQueryModal() {
+            const modal = document.getElementById('queryModal');
+            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
+            closeAllModalsExcept('queryModal');
+            if (modal.style.display === 'block') {
+                renderQueryList();
+            }
+        }
+
+        function closeAllModalsExcept(exceptId) {
+            ['geoModal', 'transformModal', 'queryModal', 'basemapDropdown', 'profileModal', 'addPointModal', 'tableModal'].forEach(id => {
+                if (id !== exceptId) {
+                    const el = document.getElementById(id);
+                    if (el) el.style.display = 'none';
+                }
+            });
         }
 
         function switchTransformTab(tabName) {
@@ -1083,19 +1130,6 @@
             resBox.innerHTML = `نتائج التحويل إلى الإحداثيات الجغرافية:<br>
                 📍 <b>خط العرض (Latitude):</b> ${lat.toFixed(6)}°<br>
                 📍 <b>خط الطول (Longitude):</b> ${lon.toFixed(6)}°`;
-        }
-
-        function toggleQueryModal() {
-            const modal = document.getElementById('queryModal');
-            modal.style.display = modal.style.display === 'block' ? 'none' : 'block';
-            document.getElementById('geoModal').style.display = 'none';
-            document.getElementById('transformModal').style.display = 'none';
-            document.getElementById('basemapDropdown').style.display = 'none';
-            document.getElementById('profileModal').style.display = 'none';
-            document.getElementById('addPointModal').style.display = 'none';
-            if (modal.style.display === 'block') {
-                renderQueryList();
-            }
         }
 
         function openSaveMenu() {
@@ -1455,10 +1489,9 @@
             }
         }
 
-        // إضافة نقطة جديدة عبر نموذج منبثق متطور مع التنقل بالـ Enter
+        // فتح نافذة نموذج إضافة نقطة جديدة الذكية مع دعم التنقل بالـ Enter
         function openAddPointModal() {
-            document.getElementById('queryModal').style.display = 'none';
-            document.getElementById('newPointId5000').value = '';
+            closeAllModalsExcept('addPointModal');
             document.getElementById('newPointId').value = Math.floor(Math.random() * 900000) + 100000;
             document.getElementById('newName').value = '';
             document.getElementById('newLat').value = '';
@@ -1467,7 +1500,7 @@
             document.getElementById('newType').value = 'Secondary';
             document.getElementById('newDesc').value = '';
             document.getElementById('addPointModal').style.display = 'block';
-            document.getElementById('newPointId').focus();
+            document.getElementById('newName').focus();
         }
 
         function handleFormEnter(event, nextFieldId) {
@@ -1481,7 +1514,7 @@
             }
         }
 
-        function submitNewPointForm() {
+        function submitNewPoint(closeModal) {
             const id = document.getElementById('newPointId').value.trim();
             const name = document.getElementById('newName').value.trim();
             const lat = document.getElementById('newLat').value.trim();
@@ -1519,9 +1552,13 @@
             displayMarkers(allPointsData);
             updateStatistics(allPointsData);
 
-            document.getElementById('addPointModal').style.display = 'none';
-            alert('تمت إضافة النقطة وحفظها محلياً وعرضها على الخريطة بنجاح!');
-            toggleQueryModal();
+            if (closeModal) {
+                document.getElementById('addPointModal').style.display = 'none';
+                alert('تمت إضافة النقطة وحفظها بنجاح!');
+            } else {
+                alert('تم حفظ النقطة! يمكنك إدخال نقطة جديدة.');
+                openAddPointModal();
+            }
         }
 
         function switchTab(tabName) {
