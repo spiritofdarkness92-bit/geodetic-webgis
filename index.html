@@ -27,12 +27,19 @@
             z-index: 1;
         }
 
-        /* زر نسخة الجوال في أقصى الشمال الشرقي (أعلى اليمين تماماً) */
-        .mobile-toggle-btn {
+        /* حاوية أزرار أقصى الشمال الشرقي (نسخة الجوال وتبديل الخريطة - التعديل 2) */
+        .top-right-container {
             position: absolute;
             top: 15px;
             right: 15px;
             z-index: 3000;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* زر نسخة الجوال */
+        .mobile-toggle-btn {
             background: #8e44ad !important;
             color: white;
             border: none;
@@ -48,7 +55,24 @@
             background: #732d91 !important;
         }
 
-        /* القائمة المنسدلة البديلة لزر الثلاث شرطات في الجوال (الطلب 2) */
+        /* زر تبديل الخريطة العلوي بجانب زر الجوال (التعديل 2) */
+        .top-basemap-btn {
+            background: #16a085 !important;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            transition: background 0.3s;
+        }
+        .top-basemap-btn:hover {
+            background: #138d75 !important;
+        }
+
+        /* القائمة المنسدلة البديلة لزر الثلاث شرطات في الجوال */
         .mobile-nav-dropdown-container {
             display: none;
             position: absolute;
@@ -68,11 +92,11 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
-        /* لوحة التحكم العلوية لسطح المكتب */
+        /* لوحة التحكم العلوية لسطح المكتب (بدون زر الانتقال القديم الذي تم نقله) */
         .control-panel {
             position: absolute;
             top: 15px;
-            right: 145px;
+            right: 285px;
             z-index: 1000;
             background: white;
             padding: 10px 15px;
@@ -105,8 +129,6 @@
         .control-panel button:hover, .tool-btn:hover {
             background: #219653;
         }
-        .goto-btn { background: #2980b9 !important; }
-        .goto-btn:hover { background: #1f618d !important; }
         .save-btn { background: #d35400 !important; }
         .save-btn:hover { background: #ba4a00 !important; }
         .profile-btn { background: #34495e !important; }
@@ -296,18 +318,17 @@
            تنسيق نسخة الجوال المتقدمة (Mobile View)
         ======================================================== */
         body.mobile-mode .mobile-nav-dropdown-container {
-            display: block; /* إظهار القائمة المنسدلة بدلاً من الهامبرغر */
+            display: block;
         }
         
         body.mobile-mode .control-panel {
-            display: none; /* إخفاء شريط سطح المكتب العائم في الجوال */
+            display: none;
         }
 
         body.mobile-mode .floating-tools-group {
-            display: none !important; /* إخفاء الأزرار العائمة الافتراضية في الجوال لتفعيل القائمة المنسدلة */
+            display: none !important;
         }
 
-        /* زر القائمة المنسدلة الذكية في الجوال وزر فقاعة الخريطة (الطلب 4: زر الخريطة أسفل زر الأدوات الهندسية وليس داخله) */
         body.mobile-mode .mobile-tools-dropdown-btn {
             display: block !important;
             position: fixed;
@@ -353,7 +374,7 @@
         body.mobile-mode .basemap-bubble-btn {
             display: block !important;
             position: fixed;
-            top: 105px; /* أسفل زر الأدوات الهندسية مباشرة */
+            top: 105px;
             right: 12px;
             z-index: 2000;
             background: #16a085;
@@ -416,10 +437,13 @@
 </head>
 <body id="mainBody">
 
-    <!-- زر نسخة الجوال في أقصى الشمال الشرقي -->
-    <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
+    <!-- حاوية أزرار أقصى الشمال الشرقي: نسخة الجوال وتبديل الخريطة بجانب بعضهما (التعديل 2) -->
+    <div class="top-right-container">
+        <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
+        <button class="top-basemap-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
+    </div>
     
-    <!-- القائمة المنسدلة البديلة لزر الثلاث شرطات في الجوال (الطلب 2) -->
+    <!-- القائمة المنسدلة البديلة لزر الثلاث شرطات في الجوال -->
     <div class="mobile-nav-dropdown-container">
         <select class="mobile-nav-select" onchange="handleMobileNavSelect(this)">
             <option value="" disabled selected>📂 قائمة التحكم السريع ▼</option>
@@ -440,7 +464,6 @@
         <button style="background:#d35400;" onclick="toggleTransformModal(); toggleMobileToolsDropdown();">🌐 تحويل الإحداثيات</button>
         <button style="background:#8e44ad;" onclick="toggleQueryModal(); toggleMobileToolsDropdown();">🔍 استعلام النقاط</button>
     </div>
-    <!-- زر تبديل الخريطة أسفل زر الأدوات الهندسية وليس داخله (الطلب 4) -->
     <button class="basemap-bubble-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
 
     <!-- صندوق الإحداثيات المتحرك عند تفعيل أداة اختيار نقطة على الخريطة -->
@@ -452,8 +475,6 @@
     <!-- لوحة التحكم العلوية لسطح المكتب -->
     <div class="control-panel" id="controlPanel">
         <input type="text" id="searchInput" placeholder="ابحث برقم أو اسم النقطة..." onkeyup="filterPoints()">
-        <input type="text" id="gotoInput" placeholder="انتقل إلى نقطة..." onkeypress="handleGotoEnter(event)">
-        <button class="goto-btn" onclick="goToPoint()">Go To 🎯</button>
         <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
         <button class="profile-btn" onclick="openProfileModal()">👤 الملف الشخصي</button>
         
@@ -520,7 +541,7 @@
         </div>
     </div>
 
-    <!-- نافذة خيارات الحفظ والتصدير المتطورة (الطلب 6) -->
+    <!-- نافذة خيارات الحفظ والتصدير المتطورة -->
     <div class="save-modal" id="saveModal">
         <button class="close-modal" onclick="document.getElementById('saveModal').style.display='none'">✕</button>
         <h4>💾 مركز الحفظ والتصدير المتطور</h4>
@@ -565,7 +586,7 @@
         <button class="clear-map-btn" style="margin-top:5px; padding:5px;" onclick="clearRightClickMeasurements()">إعادة ضبط القياس</button>
     </div>
 
-    <!-- نافذة جدول تحرير وتدقيق الملفات المستوردة -->
+    <!-- نافذة جدول تحرير وتدقيق الملفات المستوردة ونقاط الاستعلام -->
     <div class="table-modal" id="tableModal">
         <button class="close-modal" onclick="document.getElementById('tableModal').style.display='none'">✕</button>
         <h4 id="tableModalTitle">جدول تدقيق وتعديل بيانات الملف المستورَد</h4>
@@ -589,16 +610,17 @@
         <button class="tool-btn" id="tableCommitBtn" style="width:100%; background:#27ae60; margin-top:10px;" onclick="commitTableDataToMap()">عرض وحفظ النقاط على الخريطة 🚀</button>
     </div>
 
-    <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة (مع نقل زر اختيار نقطة هنا - الطلب 3) -->
+    <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة (تم نقل زر اختيار وتثبيت نقطة والانتقال هنا - التعديل 1) -->
     <div class="geo-modal" id="geoModal">
         <button class="close-modal" onclick="toggleGeoModal()">✕</button>
         <h4>أدوات الحساب الجيوديسي</h4>
         
         <!-- زر اختيار نقطة الجديد داخل القائمة الهندسية -->
-        <button class="tool-btn" style="width:100%; background:#c0392b; margin-bottom:12px;" onclick="togglePointPickerMode(); toggleGeoModal();">📍 اختيار وتثبيت نقطة على الخريطة</button>
+        <button class="tool-btn" style="width:100%; background:#c0392b; margin-bottom:8px;" onclick="togglePointPickerMode(); toggleGeoModal();">📍 اختيار وتثبيت نقطة على الخريطة</button>
 
         <div class="tabs">
-            <button id="tabDistBtn" class="active" onclick="switchTab('distance')">المسافة</button>
+            <button id="tabGotoPointBtn" class="active" onclick="switchTab('gotoPoint')">الانتقال</button>
+            <button id="tabDistBtn" onclick="switchTab('distance')">المسافة</button>
             <button id="tabAreaBtn" onclick="switchTab('area')">المساحة</button>
             <button id="tabAzimuthBtn" onclick="switchTab('azimuth')">الانحراف</button>
             <button id="tabBufferBtn" onclick="switchTab('buffer')">الحماية</button>
@@ -606,8 +628,17 @@
             <button id="tabNavBtn" onclick="switchTab('nav')">التوجيه</button>
         </div>
 
+        <!-- تبويب الانتقال لنقطة (تم نقله إلى داخل الأدوات الهندسية - التعديل 1) -->
+        <div id="gotoPointTab" class="tab-content active">
+            <div class="form-group">
+                <label>رقم أو اسم النقطة للانتقال:</label>
+                <input type="text" id="geoModalGotoInput" placeholder="مثال: G01 أو 101" onkeypress="handleGeoModalGotoEnter(event)">
+            </div>
+            <button class="tool-btn" style="width:100%; background:#2980b9;" onclick="goToPointFromGeoModal()">الانتقال إلى النقطة 🎯</button>
+        </div>
+
         <!-- حساب المسافة -->
-        <div id="distanceTab" class="tab-content active">
+        <div id="distanceTab" class="tab-content">
             <div class="form-group">
                 <label>رقم أو اسم نقطة البداية:</label>
                 <input type="text" id="startPoint" placeholder="مثال: G01" onkeypress="handleDistEnter(event, 'start')">
@@ -620,7 +651,7 @@
             <div id="distanceResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- حساب المساحة وأطوال الأضلع (الطلب 5) -->
+        <!-- حساب المساحة وأطوال الأضلع -->
         <div id="areaTab" class="tab-content">
             <div id="areaPointsContainer">
                 <div class="form-group">
@@ -798,10 +829,10 @@
             alert(isMobile ? 'تم تفعيل نسخة الجوال بنجاح! استخدم القائمة المنسدلة في أعلى اليسار للتحكم.' : 'تم العودة للوضع العادي!');
         }
 
-        // معالجة اختيار خيارات القائمة المنسدلة للجوال (الطلب 2)
+        // معالجة اختيار خيارات القائمة المنسدلة للجوال
         function handleMobileNavSelect(selectElem) {
             const val = selectElem.value;
-            selectElem.selectedIndex = 0; // إعادة التعيين
+            selectElem.selectedIndex = 0;
             if (val === 'search') {
                 const q = prompt('أدخل كلمة البحث (رقم أو اسم النقطة):');
                 if (q !== null) {
@@ -811,8 +842,10 @@
             } else if (val === 'goto') {
                 const g = prompt('أدخل رقم أو اسم النقطة للانتقال إليها:');
                 if (g !== null) {
-                    document.getElementById('gotoInput').value = g;
-                    goToPoint();
+                    toggleGeoModal();
+                    switchTab('gotoPoint');
+                    document.getElementById('geoModalGotoInput').value = g;
+                    goToPointFromGeoModal();
                 }
             } else if (val === 'save') {
                 openSaveMenu();
@@ -892,7 +925,6 @@
         let isNavigating = false;
         let rightClickSelectedPoints = [];
 
-        // متغيرات أداة اختيار وتثبيت نقطة عبر السهم المتحرك
         let isPointPickerActive = false;
         let pickerMarker = null;
 
@@ -1078,7 +1110,6 @@
                 📍 <b>خط الطول (Longitude):</b> ${lon.toFixed(6)}°`;
         }
 
-        // فتح نافذة مركز الحفظ والتصدير المتطور (الطلب 6)
         function openSaveMenu() {
             document.getElementById('saveModal').style.display = 'block';
             closeAllModalsExcept('saveModal');
@@ -1246,7 +1277,7 @@
             }
         }
 
-        // الطلب 1: إصلاح وتفعيل تعديل النقطة من قائمة الاستعلام والإدارة بسلاسة
+        // التعديل 3: تفعيل وتعديل النقطة من قائمة الاستعلام والإدارة داخل جدول تفاصيل النقطة
         function editPointInTable(pointId) {
             const p = allPointsData.find(item => (item.point_id === pointId || item.id === pointId));
             if (!p) return;
@@ -1308,7 +1339,6 @@
             toggleQueryModal(); // إعادة فتح استعلام النقاط لرؤية التحديثات
         }
 
-        // الحذف باستخدام كلمة مرور الملف الشخصي المحدثة
         function deletePoint(pointId, pointName) {
             const password = prompt('الرجاء إدخال كلمة مرور البرنامج (من الملف الشخصي) لتأكيد الحذف:');
             if (password === null) return;
@@ -1329,7 +1359,6 @@
 
         let stagingImportData = [];
 
-        // استيراد الملفات
         function importGeoJSONFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1546,7 +1575,6 @@
             document.getElementById('newName').focus();
         }
 
-        // أداة اختيار وتثبيت نقطة على الخريطة
         function togglePointPickerMode() {
             isPointPickerActive = !isPointPickerActive;
             const coordsBox = document.getElementById('pickerCoordsBox');
@@ -1667,16 +1695,17 @@
         }
 
         function switchTab(tabName) {
-            ['distance', 'area', 'azimuth', 'buffer', 'profile', 'nav'].forEach(t => {
+            ['gotoPoint', 'distance', 'area', 'azimuth', 'buffer', 'profile', 'nav'].forEach(t => {
                 const el = document.getElementById(t + 'Tab');
                 const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
                 if (el) el.classList.remove('active');
                 if (btn) btn.classList.remove('active');
             });
 
-            document.getElementById(tabName + 'Tab').classList.add('active');
-            const activeBtn = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn');
-            if (activeBtn) activeBtn.classList.add('active');
+            const targetTab = document.getElementById(tabName + 'Tab');
+            const targetBtn = document.getElementById('tab' + tabName.charAt(0).toUpperCase() + tabName.slice(1) + 'Btn');
+            if (targetTab) targetTab.classList.add('active');
+            if (targetBtn) targetBtn.classList.add('active');
         }
 
         function addAreaPointInput() {
@@ -1774,7 +1803,6 @@
             });
         }
 
-        // حساب المساحة وأطوال الأضلع تفاعلياً بالماوس الأيمن (الطلب 5)
         function handleMarkerRightClick(point, marker) {
             marker.setIcon(redIcon);
 
@@ -2146,11 +2174,13 @@
             );
         }
 
-        function goToPoint() {
-            const query = document.getElementById('gotoInput').value.trim().toLowerCase();
+        // دالة الانتقال لنقطة داخل الأدوات الهندسية (التعديل 1)
+        function goToPointFromGeoModal() {
+            const query = document.getElementById('geoModalGotoInput').value.trim().toLowerCase();
             if (!query) return;
             const found = markersMap[query];
             if (found) {
+                toggleGeoModal();
                 map.setView([found.lat, found.lon], 16);
                 found.marker.openPopup();
             } else {
@@ -2158,34 +2188,10 @@
             }
         }
 
-        function handleGotoEnter(event) {
+        function handleGeoModalGotoEnter(event) {
             if (event.key === 'Enter') {
                 event.preventDefault();
-                goToPoint();
-            }
-        }
-
-        function handleDistEnter(event, fieldType) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                if (fieldType === 'start') {
-                    document.getElementById('endPoint').focus();
-                } else if (fieldType === 'end') {
-                    calculateDistance();
-                }
-            }
-        }
-
-        function handleAreaEnter(event) {
-            if (event.key === 'Enter') {
-                event.preventDefault();
-                const inputs = Array.from(document.querySelectorAll('.area-point-input'));
-                const currentIndex = inputs.indexOf(event.target);
-                if (currentIndex < inputs.length - 1) {
-                    inputs[currentIndex + 1].focus();
-                } else {
-                    calculateArea();
-                }
+                goToPointFromGeoModal();
             }
         }
 
@@ -2203,7 +2209,8 @@
 
         function refreshData() {
             document.getElementById('searchInput').value = '';
-            document.getElementById('gotoInput').value = '';
+            const gotoIn = document.getElementById('geoModalGotoInput');
+            if (gotoIn) gotoIn.value = '';
             loadPoints();
             alert('تم تحديث البيانات والخريطة بنجاح!');
         }
@@ -2232,6 +2239,7 @@
             document.getElementById('navResult').style.display = 'none';
             document.getElementById('chartContainer').style.display = 'none';
 
+            document.getElementById('geoModalGotoInput').value = '';
             document.getElementById('startPoint').value = '';
             document.getElementById('endPoint').value = '';
             document.getElementById('azimuthStart').value = '';
@@ -2297,7 +2305,6 @@
             map.fitBounds([latlng1, latlng2]);
         }
 
-        // حساب المساحة وأطوال الأضلع المرتبة في نافذة الأدوات (الطلب 5)
         function calculateArea() {
             const inputs = document.querySelectorAll('.area-point-input');
             const resultBox = document.getElementById('areaResult');
