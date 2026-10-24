@@ -48,19 +48,22 @@
             background: #732d91 !important;
         }
 
-        /* زر قائمة الهامبرغر (☰) الخاصة بالجوال */
-        .mobile-menu-btn {
+        /* القائمة المنسدلة البديلة لزر الثلاث شرطات في الجوال (الطلب 2) */
+        .mobile-nav-dropdown-container {
             display: none;
             position: absolute;
             top: 15px;
             left: 15px;
             z-index: 3000;
+        }
+        .mobile-nav-select {
             background: #2c3e50;
             color: white;
             border: none;
             padding: 10px 14px;
             border-radius: 8px;
-            font-size: 18px;
+            font-size: 15px;
+            font-weight: bold;
             cursor: pointer;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
@@ -108,8 +111,6 @@
         .save-btn:hover { background: #ba4a00 !important; }
         .profile-btn { background: #34495e !important; }
         .profile-btn:hover { background: #2c3e50 !important; }
-        .pick-point-btn { background: #c0392b !important; }
-        .pick-point-btn:hover { background: #962d22 !important; }
 
         /* لوحة إحصائيات المشروع (العلوية اليسرى) */
         .stats-panel {
@@ -174,7 +175,7 @@
         .basemap-tool-btn:hover { background: #138d75; }
 
         /* النوافذ المنبثقة العامة */
-        .geo-modal, .transform-modal, .query-modal, .profile-modal, .add-point-modal, .table-modal, .basemap-dropdown, .mobile-tools-dropdown {
+        .geo-modal, .transform-modal, .query-modal, .profile-modal, .add-point-modal, .save-modal, .table-modal, .basemap-dropdown, .mobile-tools-dropdown {
             position: absolute;
             z-index: 2000;
             background: white;
@@ -183,10 +184,10 @@
             display: none;
             direction: rtl;
         }
-        .geo-modal { top: 75px; right: 190px; width: 330px; padding: 15px; max-height: 480px; overflow-y: auto; }
+        .geo-modal { top: 75px; right: 190px; width: 330px; padding: 15px; max-height: 520px; overflow-y: auto; }
         .transform-modal { top: 135px; right: 190px; width: 330px; padding: 15px; }
         .query-modal { top: 75px; right: 190px; width: 370px; padding: 15px; max-height: 500px; overflow-y: auto; }
-        .profile-modal, .add-point-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 350px; padding: 20px; z-index: 4000; }
+        .profile-modal, .add-point-modal, .save-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 350px; padding: 20px; z-index: 4000; }
         .table-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 85vw; max-width: 950px; max-height: 85vh; padding: 20px; overflow-y: auto; z-index: 3000; }
         .basemap-dropdown { top: 190px; right: 190px; width: 180px; padding: 10px; }
         .basemap-dropdown button {
@@ -201,7 +202,9 @@
             left: 25px;
             z-index: 2000;
             background: white;
-            width: 300px;
+            width: 320px;
+            max-height: 350px;
+            overflow-y: auto;
             padding: 12px 15px;
             border-radius: 8px;
             box-shadow: 0 4px 15px rgba(0,0,0,0.3);
@@ -210,7 +213,7 @@
             border-right: 5px solid #e74c3c;
         }
 
-        .geo-modal h4, .query-modal h4, .transform-modal h4, .table-modal h4, .profile-modal h4, .add-point-modal h4 {
+        .geo-modal h4, .query-modal h4, .transform-modal h4, .table-modal h4, .profile-modal h4, .add-point-modal h4, .save-modal h4 {
             margin-top: 0;
             color: #2c3e50;
             border-bottom: 2px solid #eee;
@@ -243,7 +246,7 @@
         .form-group { margin-bottom: 10px; }
         .form-group label { display: block; font-size: 12px; margin-bottom: 3px; color: #555; font-weight: bold; }
         .form-group input, .form-group select { width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
-        .result-box { margin-top: 10px; padding: 8px; background: #e8f8f5; border: 1px solid #a3e4d7; border-radius: 4px; font-size: 12px; color: #117a65; font-weight: bold; }
+        .result-box { margin-top: 10px; padding: 10px; background: #e8f8f5; border: 1px solid #a3e4d7; border-radius: 6px; font-size: 12px; color: #117a65; line-height: 1.6; }
         .close-modal { float: left; background: none; border: none; color: #e74c3c; font-weight: bold; cursor: pointer; font-size: 14px; }
         .clear-map-btn {
             width: 100%; margin-top: 12px; padding: 8px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.3s;
@@ -290,43 +293,21 @@
         }
 
         /* ========================================================
-           تنسيق نسخة الجوال المتقدمة (Mobile Drawer & Responsive View)
+           تنسيق نسخة الجوال المتقدمة (Mobile View)
         ======================================================== */
-        body.mobile-mode .mobile-menu-btn {
-            display: block; /* إظهار زر ☰ عند تفعيل نسخة الجوال */
+        body.mobile-mode .mobile-nav-dropdown-container {
+            display: block; /* إظهار القائمة المنسدلة بدلاً من الهامبرغر */
         }
         
         body.mobile-mode .control-panel {
-            position: fixed;
-            top: 0;
-            right: -280px; /* القائمة مخفية تماماً خارج الشاشة جهة اليمين */
-            width: 260px;
-            height: 100vh;
-            background: white;
-            flex-direction: column;
-            align-items: stretch;
-            padding: 60px 15px 20px 15px;
-            box-shadow: -4px 0 15px rgba(0,0,0,0.3);
-            z-index: 2500;
-            overflow-y: auto;
-            transition: right 0.3s ease-in-out;
-        }
-
-        body.mobile-mode .control-panel.open {
-            right: 0; /* سحب القائمة لداخل الشاشة عند الضغط على ☰ */
-        }
-
-        body.mobile-mode .control-panel input, 
-        body.mobile-mode .control-panel button {
-            width: 100% !important;
-            margin-bottom: 6px;
+            display: none; /* إخفاء شريط سطح المكتب العائم في الجوال */
         }
 
         body.mobile-mode .floating-tools-group {
             display: none !important; /* إخفاء الأزرار العائمة الافتراضية في الجوال لتفعيل القائمة المنسدلة */
         }
 
-        /* زر القائمة المنسدلة الذكية في الجوال وزر فقاعة الخريطة */
+        /* زر القائمة المنسدلة الذكية في الجوال وزر فقاعة الخريطة (الطلب 4: زر الخريطة أسفل زر الأدوات الهندسية وليس داخله) */
         body.mobile-mode .mobile-tools-dropdown-btn {
             display: block !important;
             position: fixed;
@@ -372,20 +353,19 @@
         body.mobile-mode .basemap-bubble-btn {
             display: block !important;
             position: fixed;
-            top: 60px;
-            left: 60px;
+            top: 105px; /* أسفل زر الأدوات الهندسية مباشرة */
+            right: 12px;
             z-index: 2000;
             background: #16a085;
             color: white;
             border: none;
             padding: 8px 12px;
-            border-radius: 20px;
+            border-radius: 8px;
             font-size: 12px;
             font-weight: bold;
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
-        /* إصلاح مشكلة تضييق وانكماش جداول الاستيراد والنوافذ في الجوال (الطلب 2) */
         body.mobile-mode .table-modal {
             width: 96vw !important;
             max-width: 96vw !important;
@@ -436,34 +416,46 @@
 </head>
 <body id="mainBody">
 
-    <!-- زر نسخة الجوال في أقصى الشمال الشرقي (أعلى اليمين) -->
+    <!-- زر نسخة الجوال في أقصى الشمال الشرقي -->
     <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
-    <!-- زر قائمة الهامبرغر الجانبية (☰) لجوال -->
-    <button class="mobile-menu-btn" onclick="toggleMobileDrawer()">☰</button>
+    
+    <!-- القائمة المنسدلة البديلة لزر الثلاث شرطات في الجوال (الطلب 2) -->
+    <div class="mobile-nav-dropdown-container">
+        <select class="mobile-nav-select" onchange="handleMobileNavSelect(this)">
+            <option value="" disabled selected>📂 قائمة التحكم السريع ▼</option>
+            <option value="search">🔍 بحث سريع</option>
+            <option value="goto">🎯 الانتقال لنقطة</option>
+            <option value="save">💾 حفظ وتصدير</option>
+            <option value="profile">👤 الملف والصلاحيات</option>
+            <option value="geojson">📂 رفع GeoJSON</option>
+            <option value="csv">📊 رفع CSV</option>
+            <option value="refresh">🔄 تحديث الخريطة</option>
+        </select>
+    </div>
 
-    <!-- أزرار القائمة المنسدلة وفقاعة الخريطة الخاصة بالجوال (الطلب 3) -->
+    <!-- أزرار القائمة المنسدلة وفقاعة الخريطة الخاصة بالجوال -->
     <button class="mobile-tools-dropdown-btn" onclick="toggleMobileToolsDropdown()">🛠️ الأدوات الهندسية ▼</button>
     <div class="mobile-tools-dropdown" id="mobileToolsDropdown">
         <button style="background:#2c3e50;" onclick="toggleGeoModal(); toggleMobileToolsDropdown();">📐📏 أدوات القياس الهندسية</button>
         <button style="background:#d35400;" onclick="toggleTransformModal(); toggleMobileToolsDropdown();">🌐 تحويل الإحداثيات</button>
         <button style="background:#8e44ad;" onclick="toggleQueryModal(); toggleMobileToolsDropdown();">🔍 استعلام النقاط</button>
     </div>
+    <!-- زر تبديل الخريطة أسفل زر الأدوات الهندسية وليس داخله (الطلب 4) -->
     <button class="basemap-bubble-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
 
-    <!-- صندوق الإحداثيات المتحرك عند تفعيل أداة اختيار نقطة على الخريطة (الطلب 5) -->
+    <!-- صندوق الإحداثيات المتحرك عند تفعيل أداة اختيار نقطة على الخريطة -->
     <div class="picker-coords-box" id="pickerCoordsBox">
         📍 خط العرض: <span id="pickerLatVal">0.00</span> | خط الطول: <span id="pickerLonVal">0.00</span>
         <br><span style="font-size:11px; color:#f1c40f;">انقر بزر الماوس الأيمن (أو مطولاً بالجوال) لتأكيد تثبيت النقطة وحفظها!</span>
     </div>
 
-    <!-- لوحة التحكم العلوية -->
+    <!-- لوحة التحكم العلوية لسطح المكتب -->
     <div class="control-panel" id="controlPanel">
         <input type="text" id="searchInput" placeholder="ابحث برقم أو اسم النقطة..." onkeyup="filterPoints()">
         <input type="text" id="gotoInput" placeholder="انتقل إلى نقطة..." onkeypress="handleGotoEnter(event)">
         <button class="goto-btn" onclick="goToPoint()">Go To 🎯</button>
         <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
         <button class="profile-btn" onclick="openProfileModal()">👤 الملف الشخصي</button>
-        <button class="pick-point-btn" onclick="togglePointPickerMode()">📍 اختيار نقطة</button>
         
         <!-- أزرار رفع الملفات من الجهاز (GeoJSON و CSV) -->
         <input type="file" id="geoFileImport" accept=".geojson,.json" style="display:none;" onchange="importGeoJSONFile(event)">
@@ -528,6 +520,18 @@
         </div>
     </div>
 
+    <!-- نافذة خيارات الحفظ والتصدير المتطورة (الطلب 6) -->
+    <div class="save-modal" id="saveModal">
+        <button class="close-modal" onclick="document.getElementById('saveModal').style.display='none'">✕</button>
+        <h4>💾 مركز الحفظ والتصدير المتطور</h4>
+        <p style="font-size:12px; color:#555;">اختر صيغة التصدير أو الحفظ المناسبة لمشروعك:</p>
+        <button class="tool-btn" style="width:100%; margin-bottom:8px; background:#2980b9;" onclick="exportGeoJSON(); document.getElementById('saveModal').style.display='none';">📁 تصدير بتنسيق GeoJSON (GIS)</button>
+        <button class="tool-btn" style="width:100%; margin-bottom:8px; background:#27ae60;" onclick="exportCSV(); document.getElementById('saveModal').style.display='none';">📊 تصدير جدول البيانات CSV</button>
+        <button class="tool-btn" style="width:100%; margin-bottom:8px; background:#8e44ad;" onclick="exportPDF(); document.getElementById('saveModal').style.display='none';">🖨️ طباعة تقرير جدول النقاط (PDF)</button>
+        <button class="tool-btn" style="width:100%; margin-bottom:8px; background:#d35400;" onclick="exportScreenshotPDF(); document.getElementById('saveModal').style.display='none';">📸 التقاط وحفظ صورة الشاشة (Screenshot)</button>
+        <button class="tool-btn" style="width:100%; background:#34495e;" onclick="exportJSONBackup(); document.getElementById('saveModal').style.display='none';">📦 نسخ احتياطي كامل (JSON)</button>
+    </div>
+
     <!-- لوحة إحصائيات المشروع (العلوية اليسرى) -->
     <div class="stats-panel" id="statsPanel">
         <h4>إحصائيات المشروع 📊</h4>
@@ -585,11 +589,14 @@
         <button class="tool-btn" id="tableCommitBtn" style="width:100%; background:#27ae60; margin-top:10px;" onclick="commitTableDataToMap()">عرض وحفظ النقاط على الخريطة 🚀</button>
     </div>
 
-    <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة -->
+    <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة (مع نقل زر اختيار نقطة هنا - الطلب 3) -->
     <div class="geo-modal" id="geoModal">
         <button class="close-modal" onclick="toggleGeoModal()">✕</button>
         <h4>أدوات الحساب الجيوديسي</h4>
         
+        <!-- زر اختيار نقطة الجديد داخل القائمة الهندسية -->
+        <button class="tool-btn" style="width:100%; background:#c0392b; margin-bottom:12px;" onclick="togglePointPickerMode(); toggleGeoModal();">📍 اختيار وتثبيت نقطة على الخريطة</button>
+
         <div class="tabs">
             <button id="tabDistBtn" class="active" onclick="switchTab('distance')">المسافة</button>
             <button id="tabAreaBtn" onclick="switchTab('area')">المساحة</button>
@@ -613,7 +620,7 @@
             <div id="distanceResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- حساب المساحة وأطوال الأضلع -->
+        <!-- حساب المساحة وأطوال الأضلع (الطلب 5) -->
         <div id="areaTab" class="tab-content">
             <div id="areaPointsContainer">
                 <div class="form-group">
@@ -783,22 +790,41 @@
             document.getElementById('profileModal').style.display = 'none';
         }
 
-        // تفعيل / إلغاء وضع نسخة الجوال والتحكم بالقائمة الجانبية
+        // تفعيل / إلغاء وضع نسخة الجوال
         function toggleMobileView() {
             const body = document.getElementById('mainBody');
             body.classList.toggle('mobile-mode');
             const isMobile = body.classList.contains('mobile-mode');
-            const controlPanel = document.getElementById('controlPanel');
-            if(!isMobile) {
-                controlPanel.classList.remove('open');
-            }
-            alert(isMobile ? 'تم تفعيل نسخة الجوال بنجاح! اضغط على زر (☰) في أعلى اليسار لإظهار/إخفاء القائمة.' : 'تم العودة للوضع العادي!');
+            alert(isMobile ? 'تم تفعيل نسخة الجوال بنجاح! استخدم القائمة المنسدلة في أعلى اليسار للتحكم.' : 'تم العودة للوضع العادي!');
         }
 
-        // فتح وإغلاق القائمة الجانبية للجوال عند الضغط على زر الهامبرغر
-        function toggleMobileDrawer() {
-            const controlPanel = document.getElementById('controlPanel');
-            controlPanel.classList.toggle('open');
+        // معالجة اختيار خيارات القائمة المنسدلة للجوال (الطلب 2)
+        function handleMobileNavSelect(selectElem) {
+            const val = selectElem.value;
+            selectElem.selectedIndex = 0; // إعادة التعيين
+            if (val === 'search') {
+                const q = prompt('أدخل كلمة البحث (رقم أو اسم النقطة):');
+                if (q !== null) {
+                    document.getElementById('searchInput').value = q;
+                    filterPoints();
+                }
+            } else if (val === 'goto') {
+                const g = prompt('أدخل رقم أو اسم النقطة للانتقال إليها:');
+                if (g !== null) {
+                    document.getElementById('gotoInput').value = g;
+                    goToPoint();
+                }
+            } else if (val === 'save') {
+                openSaveMenu();
+            } else if (val === 'profile') {
+                openProfileModal();
+            } else if (val === 'geojson') {
+                document.getElementById('geoFileImport').click();
+            } else if (val === 'csv') {
+                document.getElementById('csvFileImport').click();
+            } else if (val === 'refresh') {
+                refreshData();
+            }
         }
 
         function toggleMobileToolsDropdown() {
@@ -866,7 +892,7 @@
         let isNavigating = false;
         let rightClickSelectedPoints = [];
 
-        // متغيرات أداة اختيار وتثبيت نقطة عبر السهم المتحرك (الطلب 5)
+        // متغيرات أداة اختيار وتثبيت نقطة عبر السهم المتحرك
         let isPointPickerActive = false;
         let pickerMarker = null;
 
@@ -904,7 +930,7 @@
         }
 
         function closeAllModalsExcept(exceptId) {
-            ['geoModal', 'transformModal', 'queryModal', 'basemapDropdown', 'profileModal', 'addPointModal', 'tableModal'].forEach(id => {
+            ['geoModal', 'transformModal', 'queryModal', 'basemapDropdown', 'profileModal', 'addPointModal', 'saveModal', 'tableModal'].forEach(id => {
                 if (id !== exceptId) {
                     const el = document.getElementById(id);
                     if (el) el.style.display = 'none';
@@ -1052,18 +1078,10 @@
                 📍 <b>خط الطول (Longitude):</b> ${lon.toFixed(6)}°`;
         }
 
-        // الذكاء في زر الحفظ وخياري PDF (جدول أو صورة شاشة عبر html2canvas) - (الطلب 4)
+        // فتح نافذة مركز الحفظ والتصدير المتطور (الطلب 6)
         function openSaveMenu() {
-            const choice = prompt('اختر صيغة وحريقة الحفظ المطلوبة:\n1 - GeoJSON\n2 - CSV\n3 - تقرير جدول النقاط PDF\n4 - حفظ صورة الشاشة للشاشة الحالية (Screenshot PDF)');
-            if (choice === '1') {
-                exportGeoJSON();
-            } else if (choice === '2') {
-                exportCSV();
-            } else if (choice === '3') {
-                exportPDF();
-            } else if (choice === '4') {
-                exportScreenshotPDF();
-            }
+            document.getElementById('saveModal').style.display = 'block';
+            closeAllModalsExcept('saveModal');
         }
 
         function exportGeoJSON() {
@@ -1143,7 +1161,6 @@
             win.document.close();
         }
 
-        // خيار التقاط وحفظ صورة الشاشة (Screenshot PDF)
         function exportScreenshotPDF() {
             html2canvas(document.body).then(canvas => {
                 const imgData = canvas.toDataURL('image/png');
@@ -1157,6 +1174,22 @@
             }).catch(err => {
                 alert('حدث خطأ أثناء التقاط صورة الشاشة.');
             });
+        }
+
+        function exportJSONBackup() {
+            if (!allPointsData || allPointsData.length === 0) {
+                alert('لا توجد نقاط للنسخ الاحتياطي!');
+                return;
+            }
+            const blob = new Blob([JSON.stringify(allPointsData, null, 2)], { type: 'application/json;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'geodetic_backup.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
         }
 
         // رسم قائمة النقاط في نافذة الاستعلام
@@ -1213,7 +1246,7 @@
             }
         }
 
-        // الطلب 1: عند إجراء تعديل النقطة من قائمة الاستعلام يتم عرض تفاصيلها في جدول لتعديلها بشكل احترافي
+        // الطلب 1: إصلاح وتفعيل تعديل النقطة من قائمة الاستعلام والإدارة بسلاسة
         function editPointInTable(pointId) {
             const p = allPointsData.find(item => (item.point_id === pointId || item.id === pointId));
             if (!p) return;
@@ -1231,8 +1264,9 @@
 
             document.getElementById('tableModalTitle').innerText = `تعديل تفاصيل النقطة (ID: ${pointId})`;
             document.getElementById('tableModalDesc').innerText = 'قم بتعديل البيانات المطلوبة في الجدول أدناه ثم اضغط على زر حفظ التحديثات.';
-            document.getElementById('tableCommitBtn').innerText = 'حفظ وتحديث التعديلات على النقطة 💾';
-            document.getElementById('tableCommitBtn').setAttribute('onclick', `commitSinglePointEdit(${pointId})`);
+            const commitBtn = document.getElementById('tableCommitBtn');
+            commitBtn.innerText = 'حفظ وتحديث التعديلات على النقطة 💾';
+            commitBtn.onclick = function() { commitSinglePointEdit(pointId); };
             
             renderImportTable();
         }
@@ -1247,7 +1281,7 @@
                 return;
             }
 
-            const elevVal = row.elevation !== '' ? parseFloat(row.elevation) : null;
+            const elevVal = row.elevation !== '' && !isNaN(parseFloat(row.elevation)) ? parseFloat(row.elevation) : null;
             const updatedPoint = {
                 point_id: row.point_id,
                 id: row.point_id,
@@ -1295,7 +1329,7 @@
 
         let stagingImportData = [];
 
-        // استيراد الملفات مع الترتيب والترقيم التلقائي التام
+        // استيراد الملفات
         function importGeoJSONFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1333,8 +1367,9 @@
                     
                     document.getElementById('tableModalTitle').innerText = 'جدول تدقيق وتعديل بيانات الملف المستورَد';
                     document.getElementById('tableModalDesc').innerHTML = 'الخلايا التي تحتوي على أخطاء أو قيم غير صالحة تظهر بخط سفلي متقطع. استخدم <b>الأسهم</b> للانتقال بين الخلايا، أو Enter للنزول.';
-                    document.getElementById('tableCommitBtn').innerText = 'عرض وحفظ النقاط على الخريطة 🚀';
-                    document.getElementById('tableCommitBtn').setAttribute('onclick', 'commitTableDataToMap()');
+                    const commitBtn = document.getElementById('tableCommitBtn');
+                    commitBtn.innerText = 'عرض وحفظ النقاط على الخريطة 🚀';
+                    commitBtn.onclick = commitTableDataToMap;
 
                     renderImportTable();
                 } catch(err) {
@@ -1376,8 +1411,9 @@
 
                     document.getElementById('tableModalTitle').innerText = 'جدول تدقيق وتعديل بيانات الملف المستورَد';
                     document.getElementById('tableModalDesc').innerHTML = 'الخلايا التي تحتوي على أخطاء أو قيم غير صالحة تظهر بخط سفلي متقطع. استخدم <b>الأسهم</b> للانتقال بين الخلايا، أو Enter للنزول.';
-                    document.getElementById('tableCommitBtn').innerText = 'عرض وحفظ النقاط على الخريطة 🚀';
-                    document.getElementById('tableCommitBtn').setAttribute('onclick', 'commitTableDataToMap()');
+                    const commitBtn = document.getElementById('tableCommitBtn');
+                    commitBtn.innerText = 'عرض وحفظ النقاط على الخريطة 🚀';
+                    commitBtn.onclick = commitTableDataToMap;
 
                     renderImportTable();
                 } catch(err) {
@@ -1387,7 +1423,6 @@
             reader.readAsText(file);
         }
 
-        // جدول الاستيراد مع خاصية القفز والتحرك بالأسهم
         function renderImportTable() {
             const tbody = document.getElementById('importTableBody');
             tbody.innerHTML = '';
@@ -1498,7 +1533,6 @@
             }
         }
 
-        // فتح نافذة نموذج إضافة نقطة جديدة الذكية
         function openAddPointModal() {
             closeAllModalsExcept('addPointModal');
             document.getElementById('newPointId').value = Math.floor(Math.random() * 900000) + 100000;
@@ -1512,20 +1546,16 @@
             document.getElementById('newName').focus();
         }
 
-        // الطلب 5: إضافة أداة اختيار وتثبيت نقطة على الخريطة بسهم أحمر متحرك مع الماوس وتأكيد بالماوس الأيمن أو الضغط المطول
+        // أداة اختيار وتثبيت نقطة على الخريطة
         function togglePointPickerMode() {
             isPointPickerActive = !isPointPickerActive;
-            const btn = document.querySelector('.pick-point-btn');
             const coordsBox = document.getElementById('pickerCoordsBox');
 
             if (isPointPickerActive) {
-                btn.style.background = '#27ae60';
-                btn.innerText = '📍 انقر على الخريطة لتثبيت النقطة';
                 coordsBox.style.display = 'block';
                 map.getContainer().style.cursor = 'crosshair';
+                alert('تم تفعيل وضع اختيار النقطة! انقر على أي مكان في الخريطة ثم انقر بزر الماوس الأيمن لتثبيتها.');
             } else {
-                btn.style.background = '#c0392b';
-                btn.innerText = '📍 اختيار نقطة';
                 coordsBox.style.display = 'none';
                 map.getContainer().style.cursor = '';
                 if (pickerMarker) {
@@ -1570,11 +1600,12 @@
 
             document.getElementById('tableModalTitle').innerText = `تأكيد وحفظ النقطة المختارة (ID: ${pId})`;
             document.getElementById('tableModalDesc').innerText = 'تم التقاط الإحداثيات بنجاح. راجع بيانات النقطة أدناه واضغط على زر حفظ لتثبيتها على الخريطة.';
-            document.getElementById('tableCommitBtn').innerText = 'تثبيت النقطة وحفظها نهائياً 🚀';
-            document.getElementById('tableCommitBtn').setAttribute('onclick', 'commitTableDataToMap()');
+            const commitBtn = document.getElementById('tableCommitBtn');
+            commitBtn.innerText = 'تثبيت النقطة وحفظها نهائياً 🚀';
+            commitBtn.onclick = commitTableDataToMap;
 
             renderImportTable();
-            togglePointPickerMode(); // إيقاف وضع المختار
+            togglePointPickerMode();
         });
 
         function handleFormEnter(event, nextFieldId) {
@@ -1743,6 +1774,7 @@
             });
         }
 
+        // حساب المساحة وأطوال الأضلع تفاعلياً بالماوس الأيمن (الطلب 5)
         function handleMarkerRightClick(point, marker) {
             marker.setIcon(redIcon);
 
@@ -1790,10 +1822,24 @@
                     const areaSq = turf.area(polygon);
                     const areaHec = areaSq / 10000;
 
+                    let sidesHtml = '<br><b style="color:#2c3e50;">📏 أطوال الأضلع للمضلع:</b><br>';
+                    for (let i = 0; i < rightClickSelectedPoints.length; i++) {
+                        const pA = rightClickSelectedPoints[i];
+                        const pB = rightClickSelectedPoints[(i + 1) % rightClickSelectedPoints.length];
+                        const lA = L.latLng(pA.latitude !== undefined ? pA.latitude : pA.lat, pA.longitude !== undefined ? pA.longitude : pA.lon);
+                        const lB = L.latLng(pB.latitude !== undefined ? pB.latitude : pB.lat, pB.longitude !== undefined ? pB.longitude : pB.lon);
+                        const sDist = lA.distanceTo(lB);
+                        const nameA = pA.name || (pA.point_id !== undefined ? pA.point_id : pA.id);
+                        const nameB = pB.name || (pB.point_id !== undefined ? pB.point_id : pB.id);
+                        sidesHtml += `• الضلع (${nameA} ➔ ${nameB}): <b>${sDist.toFixed(2)} م</b><br>`;
+                    }
+
                     content.innerHTML = `
-                        <b>النقاط المحددة (${rightClickSelectedPoints.length} نقاط):</b> ${namesList}<br>
-                        📐 <b>المساحة:</b> ${areaSq.toFixed(2)} م² (${areaHec.toFixed(4)} هكتار)<br>
-                        <i style="color:#27ae60;">يمكنك مواصلة الضغط على نقاط أخرى أو إعادة الضبط.</i>
+                        <div style="background:#f8f9f9; padding:8px; border-radius:6px; border:1px solid #d5dbdb;">
+                            <b>📍 المضلع النشط (${rightClickSelectedPoints.length} نقاط):</b> ${namesList}<br>
+                            📐 <b>المساحة الإجمالية:</b> <span style="color:#27ae60;">${areaSq.toFixed(2)} م²</span> (${areaHec.toFixed(4)} هكتار)<br>
+                            ${sidesHtml}
+                        </div>
                     `;
 
                     measurementLayer.clearLayers();
@@ -1804,7 +1850,7 @@
             } else {
                 content.innerHTML = `
                     <b>النقطة الأولى المحددة:</b> ${namesList}<br>
-                    <span style="color:#2980b9;">انقر بزر الماوس الأيمن على نقطة أخرى لحساب المسافة، أو 3 نقاط لحساب المساحة.</span>
+                    <span style="color:#2980b9;">انقر بزر الماوس الأيمن على نقطة أخرى لحساب المسافة، أو 3 نقاط أو أكثر لحساب المساحة وأطوال الأضلع.</span>
                 `;
             }
         }
@@ -2159,6 +2205,7 @@
             document.getElementById('searchInput').value = '';
             document.getElementById('gotoInput').value = '';
             loadPoints();
+            alert('تم تحديث البيانات والخريطة بنجاح!');
         }
 
         function clearMapMeasurements() {
@@ -2250,7 +2297,7 @@
             map.fitBounds([latlng1, latlng2]);
         }
 
-        // الطلب 6: حساب المساحة وعرض الناتج مع أطوال الأضلع والمسافة بين كل نقطتين مكونتين للضلع
+        // حساب المساحة وأطوال الأضلع المرتبة في نافذة الأدوات (الطلب 5)
         function calculateArea() {
             const inputs = document.querySelectorAll('.area-point-input');
             const resultBox = document.getElementById('areaResult');
@@ -2291,7 +2338,6 @@
                 const areaSqMeters = turf.area(polygon);
                 const areaHectares = areaSqMeters / 10000;
 
-                // حساب أطوال الأضلع بين كل نقطتين متتاليتين
                 let sidesHtml = '<br><b>📏 أطوال الأضلع (المسافات بين النقاط):</b><br>';
                 for (let i = 0; i < ptsList.length; i++) {
                     const pA = ptsList[i];
@@ -2307,8 +2353,8 @@
                 resultBox.style.display = 'block';
                 resultBox.style.color = '#117a65';
                 resultBox.style.background = '#e8f8f5';
-                resultBox.innerHTML = `مساحة المضلع المحسوبة:<br>
-                    📐 <b>${areaSqMeters.toFixed(2)}</b> متر مربع (${areaHectares.toFixed(4)} هكتار)
+                resultBox.innerHTML = `نتائج حساب المساحة والضلع للمضلع:<br>
+                    📐 <b>المساحة الإجمالية:</b> ${areaSqMeters.toFixed(2)} م² (${areaHectares.toFixed(4)} هكتار)
                     ${sidesHtml}`;
 
                 measurementLayer.clearLayers();
