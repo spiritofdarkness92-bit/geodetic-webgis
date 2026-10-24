@@ -27,7 +27,7 @@
             z-index: 1;
         }
 
-        /* حاوية أزرار أقصى الشمال الشرقي (نسخة الجوال وتبديل الخريطة - التعديل 2) */
+        /* حاوية أزرار أقصى الشمال الشرقي */
         .top-right-container {
             position: absolute;
             top: 15px;
@@ -55,7 +55,7 @@
             background: #732d91 !important;
         }
 
-        /* زر تبديل الخريطة العلوي بجانب زر الجوال (التعديل 2) */
+        /* زر تبديل الخريطة العلوي لسطح المكتب */
         .top-basemap-btn {
             background: #16a085 !important;
             color: white;
@@ -92,7 +92,7 @@
             box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
-        /* لوحة التحكم العلوية لسطح المكتب (بدون زر الانتقال القديم الذي تم نقله) */
+        /* لوحة التحكم العلوية لسطح المكتب */
         .control-panel {
             position: absolute;
             top: 15px;
@@ -162,7 +162,7 @@
             font-weight: bold;
         }
 
-        /* الأزرار العائمة على اليمين */
+        /* الأزرار العائمة على اليمين لسطح المكتب */
         .floating-tools-group {
             position: absolute;
             top: 75px;
@@ -314,6 +314,45 @@
             border: 2px solid #e74c3c;
         }
 
+        /* نظام الإشعارات العائمة التلقائية (Toast Notifications) بدلاً من alert */
+        .custom-toast-container {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+            direction: rtl;
+        }
+        .custom-toast {
+            background: #2c3e50;
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            opacity: 0;
+            transition: opacity 0.3s ease, transform 0.3s ease;
+            transform: translateY(-20px);
+            pointer-events: auto;
+            max-width: 90vw;
+            text-align: center;
+        }
+        .custom-toast.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        .custom-toast.error {
+            background: #c0392b;
+        }
+        .custom-toast.success {
+            background: #27ae60;
+        }
+
         /* ========================================================
            تنسيق نسخة الجوال المتقدمة (Mobile View)
         ======================================================== */
@@ -329,10 +368,33 @@
             display: none !important;
         }
 
-        body.mobile-mode .mobile-tools-dropdown-btn {
+        /* الطلب 1: إخفاء زر تبديل الخريطة المجاور لنسخة الجوال في الأعلى */
+        body.mobile-mode .top-basemap-btn {
+            display: none !important;
+        }
+
+        /* الطلب 2: زر تبديل الخريطة الخاص بالجوال في الأعلى (top: 60px) */
+        body.mobile-mode .basemap-bubble-btn {
             display: block !important;
             position: fixed;
             top: 60px;
+            right: 12px;
+            z-index: 2000;
+            background: #16a085;
+            color: white;
+            border: none;
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* الطلب 2: نقل زر الأدوات الهندسية للجوال ليصبح أسفل زر تبديل الخريطة (top: 105px) */
+        body.mobile-mode .mobile-tools-dropdown-btn {
+            display: block !important;
+            position: fixed;
+            top: 105px;
             right: 12px;
             z-index: 2000;
             background: #2c3e50;
@@ -347,7 +409,7 @@
 
         body.mobile-mode .mobile-tools-dropdown {
             position: fixed;
-            top: 100px;
+            top: 145px;
             right: 12px;
             z-index: 2000;
             background: white;
@@ -369,22 +431,6 @@
             font-size: 12px;
             text-align: right;
             cursor: pointer;
-        }
-
-        body.mobile-mode .basemap-bubble-btn {
-            display: block !important;
-            position: fixed;
-            top: 105px;
-            right: 12px;
-            z-index: 2000;
-            background: #16a085;
-            color: white;
-            border: none;
-            padding: 8px 12px;
-            border-radius: 8px;
-            font-size: 12px;
-            font-weight: bold;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
         }
 
         body.mobile-mode .table-modal {
@@ -437,7 +483,7 @@
 </head>
 <body id="mainBody">
 
-    <!-- حاوية أزرار أقصى الشمال الشرقي: نسخة الجوال وتبديل الخريطة بجانب بعضهما (التعديل 2) -->
+    <!-- حاوية أزرار أقصى الشمال الشرقي -->
     <div class="top-right-container">
         <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
         <button class="top-basemap-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
@@ -610,12 +656,11 @@
         <button class="tool-btn" id="tableCommitBtn" style="width:100%; background:#27ae60; margin-top:10px;" onclick="commitTableDataToMap()">عرض وحفظ النقاط على الخريطة 🚀</button>
     </div>
 
-    <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة (تم نقل زر اختيار وتثبيت نقطة والانتقال هنا - التعديل 1) -->
+    <!-- نافذة أدوات القياس والتحليلات الهندسية المنبثقة -->
     <div class="geo-modal" id="geoModal">
         <button class="close-modal" onclick="toggleGeoModal()">✕</button>
         <h4>أدوات الحساب الجيوديسي</h4>
         
-        <!-- زر اختيار نقطة الجديد داخل القائمة الهندسية -->
         <button class="tool-btn" style="width:100%; background:#c0392b; margin-bottom:8px;" onclick="togglePointPickerMode(); toggleGeoModal();">📍 اختيار وتثبيت نقطة على الخريطة</button>
 
         <div class="tabs">
@@ -628,7 +673,6 @@
             <button id="tabNavBtn" onclick="switchTab('nav')">التوجيه</button>
         </div>
 
-        <!-- تبويب الانتقال لنقطة (تم نقله إلى داخل الأدوات الهندسية - التعديل 1) -->
         <div id="gotoPointTab" class="tab-content active">
             <div class="form-group">
                 <label>رقم أو اسم النقطة للانتقال:</label>
@@ -637,7 +681,6 @@
             <button class="tool-btn" style="width:100%; background:#2980b9;" onclick="goToPointFromGeoModal()">الانتقال إلى النقطة 🎯</button>
         </div>
 
-        <!-- حساب المسافة -->
         <div id="distanceTab" class="tab-content">
             <div class="form-group">
                 <label>رقم أو اسم نقطة البداية:</label>
@@ -651,7 +694,6 @@
             <div id="distanceResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- حساب المساحة وأطوال الأضلع -->
         <div id="areaTab" class="tab-content">
             <div id="areaPointsContainer">
                 <div class="form-group">
@@ -672,7 +714,6 @@
             <div id="areaResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- حساب الانحراف والاتجاه (Azimuth & Bearing) -->
         <div id="azimuthTab" class="tab-content">
             <div class="form-group">
                 <label>رقم أو اسم نقطة البداية:</label>
@@ -686,7 +727,6 @@
             <div id="azimuthResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- رسم نطاق الحماية Buffer -->
         <div id="bufferTab" class="tab-content">
             <div class="form-group">
                 <label>رقم أو اسم النقطة المركزية:</label>
@@ -700,7 +740,6 @@
             <div id="bufferResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- القطاع الطولي للارتفاعات وحساب الميل (Slope & Profile) -->
         <div id="profileTab" class="tab-content">
             <div class="form-group">
                 <label>رقم أو اسم نقطة البداية:</label>
@@ -717,7 +756,6 @@
             </div>
         </div>
 
-        <!-- أداة التوجيه الميداني المباشر (Geodetic Navigation & Compass) -->
         <div id="navTab" class="tab-content">
             <div class="form-group">
                 <label>رقم أو اسم نقطة التحكم المستهدفة:</label>
@@ -740,7 +778,6 @@
             <button id="tabTrans2Btn" onclick="switchTransformTab('utm2geo')">UTM ➔ جغرافي</button>
         </div>
 
-        <!-- التحويل من Lat/Long إلى UTM -->
         <div id="geo2utmTab" class="tab-content active">
             <div class="form-group">
                 <label>اختر نقطة مسجلة (اختياري):</label>
@@ -758,7 +795,6 @@
             <div id="geo2utmResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- التحويل من UTM إلى Lat/Long -->
         <div id="utm2geoTab" class="tab-content">
             <div class="form-group">
                 <label>الشرقيات (Easting - X):</label>
@@ -797,6 +833,33 @@
     <!-- استدعاء مكتبة Leaflet البرمجية -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
+        // نظام الإشعارات العائمة التلقائية (Toast Notifications) بدلاً من alert
+        function showNotification(message, type = 'info') {
+            let container = document.getElementById('toastContainer');
+            if (!container) {
+                container = document.createElement('div');
+                container.id = 'toastContainer';
+                container.className = 'custom-toast-container';
+                document.body.appendChild(container);
+            }
+
+            const toast = document.createElement('div');
+            toast.className = `custom-toast ${type}`;
+            toast.innerText = message;
+            container.appendChild(toast);
+
+            setTimeout(() => {
+                toast.classList.add('show');
+            }, 10);
+
+            setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => {
+                    toast.remove();
+                }, 300);
+            }, 3000);
+        }
+
         // إعدادات الملف الشخصي وصلاحيات كلمة المرور
         let userProfile = {
             username: "مسؤول النظام الجيوديسي",
@@ -813,11 +876,11 @@
         function saveProfileChanges() {
             const newPass = document.getElementById('profilePassword').value.trim();
             if (!newPass) {
-                alert('كلمة المرور لا يمكن أن تكون فارغة!');
+                showNotification('كلمة المرور لا يمكن أن تكون فارغة!', 'error');
                 return;
             }
             userProfile.password = newPass;
-            alert('تم حفظ وتحديث كلمة المرور وصلاحيات الملف الشخصي بنجاح!');
+            showNotification('تم حفظ وتحديث كلمة المرور وصلاحيات الملف الشخصي بنجاح!', 'success');
             document.getElementById('profileModal').style.display = 'none';
         }
 
@@ -826,7 +889,7 @@
             const body = document.getElementById('mainBody');
             body.classList.toggle('mobile-mode');
             const isMobile = body.classList.contains('mobile-mode');
-            alert(isMobile ? 'تم تفعيل نسخة الجوال بنجاح! استخدم القائمة المنسدلة في أعلى اليسار للتحكم.' : 'تم العودة للوضع العادي!');
+            showNotification(isMobile ? 'تم تفعيل نسخة الجوال بنجاح! استخدم القائمة المنسدلة في أعلى اليسار للتحكم.' : 'تم العودة للوضع العادي!', 'success');
         }
 
         // معالجة اختيار خيارات القائمة المنسدلة للجوال
@@ -1117,7 +1180,7 @@
 
         function exportGeoJSON() {
             if (!allPointsData || allPointsData.length === 0) {
-                alert('لا توجد نقاط للتصدير!');
+                showNotification('لا توجد نقاط للتصدير!', 'error');
                 return;
             }
             const features = allPointsData.map(p => {
@@ -1145,7 +1208,7 @@
 
         function exportCSV() {
             if (!allPointsData || allPointsData.length === 0) {
-                alert('لا توجد نقاط للتصدير!');
+                showNotification('لا توجد نقاط للتصدير!', 'error');
                 return;
             }
             let csv = 'Point ID,Name,Latitude,Longitude,Elevation,Type,Description\n';
@@ -1169,12 +1232,12 @@
 
         function exportPDF() {
             if (!allPointsData || allPointsData.length === 0) {
-                alert('لا توجد نقاط للتقرير!');
+                showNotification('لا توجد نقاط للتقرير!', 'error');
                 return;
             }
             let win = window.open('', '_blank');
             if (!win) {
-                alert('تم حظر فتح النافذة المنبثقة من قبل المتصفح. يرجى السماح بالنوافذ المنبثقة (Popups).');
+                showNotification('تم حظر فتح النافذة المنبثقة من قبل المتصفح. يرجى السماح بالنوافذ المنبثقة (Popups).', 'error');
                 return;
             }
             let html = `<html dir="rtl"><head><title>تقرير نقاط التحكم الجيوديسية</title><style>table{width:100%;border-collapse:collapse;}th,td{border:1px solid #333;padding:8px;text-align:center;font-family:Tahoma;font-size:12px;}th{background:#2c3e50;color:white;}</style></head><body>`;
@@ -1197,19 +1260,19 @@
                 const imgData = canvas.toDataURL('image/png');
                 let win = window.open('', '_blank');
                 if (!win) {
-                    alert('يرجى السماح بالنوافذ المنبثقة لعرض صورة الشاشة!');
+                    showNotification('يرجى السماح بالنوافذ المنبثقة لعرض صورة الشاشة!', 'error');
                     return;
                 }
                 win.document.write(`<html dir="rtl"><head><title>صورة شاشة المشروع الجيوديسي</title></head><body style="margin:0; text-align:center;"><img src="${imgData}" style="width:100%; height:auto;"/><script>window.onload = function() { window.print(); };<\/script></body></html>`);
                 win.document.close();
             }).catch(err => {
-                alert('حدث خطأ أثناء التقاط صورة الشاشة.');
+                showNotification('حدث خطأ أثناء التقاط صورة الشاشة.', 'error');
             });
         }
 
         function exportJSONBackup() {
             if (!allPointsData || allPointsData.length === 0) {
-                alert('لا توجد نقاط للنسخ الاحتياطي!');
+                showNotification('لا توجد نقاط للنسخ الاحتياطي!', 'error');
                 return;
             }
             const blob = new Blob([JSON.stringify(allPointsData, null, 2)], { type: 'application/json;charset=utf-8;' });
@@ -1273,16 +1336,15 @@
                 map.setView([found.lat, found.lon], 16);
                 found.marker.openPopup();
             } else {
-                alert('لم يتم العثور على إحداثيات النقطة!');
+                showNotification('لم يتم العثور على إحداثيات النقطة!', 'error');
             }
         }
 
-        // التعديل 3: تفعيل وتعديل النقطة من قائمة الاستعلام والإدارة داخل جدول تفاصيل النقطة
         function editPointInTable(pointId) {
             const p = allPointsData.find(item => (item.point_id === pointId || item.id === pointId));
             if (!p) return;
 
-            toggleQueryModal(); // إغلاق نافذة الاستعلام
+            toggleQueryModal();
             stagingImportData = [{
                 point_id: p.point_id !== undefined ? p.point_id : p.id,
                 name: p.name || '',
@@ -1308,7 +1370,7 @@
             const lon = parseFloat(row.longitude);
 
             if (isNaN(lat) || isNaN(lon)) {
-                alert('خطأ: خط العرض وخط الطول يجب أن يكونا أرقاماً صحيحة!');
+                showNotification('خطأ: خط العرض وخط الطول يجب أن يكونا أرقاماً صحيحة!', 'error');
                 return;
             }
 
@@ -1335,15 +1397,15 @@
             }
 
             document.getElementById('tableModal').style.display = 'none';
-            alert('تم تحديث وتعديل بيانات النقطة بنجاح!');
-            toggleQueryModal(); // إعادة فتح استعلام النقاط لرؤية التحديثات
+            showNotification('تم تحديث وتعديل بيانات النقطة بنجاح!', 'success');
+            toggleQueryModal();
         }
 
         function deletePoint(pointId, pointName) {
             const password = prompt('الرجاء إدخال كلمة مرور البرنامج (من الملف الشخصي) لتأكيد الحذف:');
             if (password === null) return;
             if (password !== userProfile.password) {
-                alert('كلمة المرور غير صحيحة! تم إلغاء عملية الحذف.');
+                showNotification('كلمة المرور غير صحيحة! تم إلغاء عملية الحذف.', 'error');
                 return;
             }
 
@@ -1352,7 +1414,7 @@
                 displayMarkers(allPointsData);
                 updateStatistics(allPointsData);
 
-                alert('تم حذف النقطة بنجاح!');
+                showNotification('تم حذف النقطة بنجاح!', 'success');
                 toggleQueryModal();
             }
         }
@@ -1402,7 +1464,7 @@
 
                     renderImportTable();
                 } catch(err) {
-                    alert('خطأ في قراءة ملف GeoJSON.');
+                    showNotification('خطأ في قراءة ملف GeoJSON.', 'error');
                 }
             };
             reader.readAsText(file);
@@ -1446,7 +1508,7 @@
 
                     renderImportTable();
                 } catch(err) {
-                    alert('خطأ في قراءة ملف CSV.');
+                    showNotification('خطأ في قراءة ملف CSV.', 'error');
                 }
             };
             reader.readAsText(file);
@@ -1556,9 +1618,9 @@
                 displayMarkers(allPointsData);
                 updateStatistics(allPointsData);
                 document.getElementById('tableModal').style.display = 'none';
-                alert(`تم بنجاح حفظ وعرض ${count} نقطة على الخريطة!`);
+                showNotification(`تم بنجاح حفظ وعرض ${count} نقطة على الخريطة!`, 'success');
             } else {
-                alert('لا توجد نقاط ذات إحداثيات صحيحة. يرجى تصحيح الأخطاء المميزة بخط سفلي أولاً.');
+                showNotification('لا توجد نقاط ذات إحداثيات صحيحة. يرجى تصحيح الأخطاء المميزة بخط سفلي أولاً.', 'error');
             }
         }
 
@@ -1582,7 +1644,7 @@
             if (isPointPickerActive) {
                 coordsBox.style.display = 'block';
                 map.getContainer().style.cursor = 'crosshair';
-                alert('تم تفعيل وضع اختيار النقطة! انقر على أي مكان في الخريطة ثم انقر بزر الماوس الأيمن لتثبيتها.');
+                showNotification('تم تفعيل وضع اختيار النقطة! انقر على أي مكان في الخريطة ثم انقر بزر الماوس الأيمن لتثبيتها.', 'success');
             } else {
                 coordsBox.style.display = 'none';
                 map.getContainer().style.cursor = '';
@@ -1657,7 +1719,7 @@
             const description = document.getElementById('newDesc').value.trim();
 
             if (!lat || !lon || isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) {
-                alert('خطأ: خط العرض وخط الطول إجباريان ويجب أن يكونا أرقاماً صحيحة!');
+                showNotification('خطأ: خط العرض وخط الطول إجباريان ويجب أن يكونا أرقاماً صحيحة!', 'error');
                 return;
             }
 
@@ -1687,9 +1749,9 @@
 
             if (closeModal) {
                 document.getElementById('addPointModal').style.display = 'none';
-                alert('تمت إضافة النقطة وحفظها بنجاح!');
+                showNotification('تمت إضافة النقطة وحفظها بنجاح!', 'success');
             } else {
-                alert('تم حفظ النقطة! يمكنك إدخال نقطة جديدة.');
+                showNotification('تم حفظ النقطة! يمكنك إدخال نقطة جديدة.', 'success');
                 openAddPointModal();
             }
         }
@@ -2104,7 +2166,7 @@
             }
 
             if (!navigator.geolocation) {
-                alert('متصفحك لا يدعم خاصية تحديد الموقع الجغرافي GPS!');
+                showNotification('متصفحك لا يدعم خاصية تحديد الموقع الجغرافي GPS!', 'error');
                 return;
             }
 
@@ -2174,7 +2236,6 @@
             );
         }
 
-        // دالة الانتقال لنقطة داخل الأدوات الهندسية (التعديل 1)
         function goToPointFromGeoModal() {
             const query = document.getElementById('geoModalGotoInput').value.trim().toLowerCase();
             if (!query) return;
@@ -2184,7 +2245,7 @@
                 map.setView([found.lat, found.lon], 16);
                 found.marker.openPopup();
             } else {
-                alert('لم يتم العثور على النقطة المطلوبة!');
+                showNotification('لم يتم العثور على النقطة المطلوبة!', 'error');
             }
         }
 
@@ -2212,7 +2273,7 @@
             const gotoIn = document.getElementById('geoModalGotoInput');
             if (gotoIn) gotoIn.value = '';
             loadPoints();
-            alert('تم تحديث البيانات والخريطة بنجاح!');
+            showNotification('تم تحديث البيانات والخريطة بنجاح!', 'success');
         }
 
         function clearMapMeasurements() {
