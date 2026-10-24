@@ -11,16 +11,18 @@
     <!-- مكتبة الرسم البياني Chart.js للقطاع الطولي للارتفاعات -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
+        * { box-sizing: border-box; }
         body {
             margin: 0;
             padding: 0;
             font-family: Tahoma, sans-serif;
             transition: all 0.3s ease;
-            overflow-x: hidden;
+            overflow: hidden;
         }
         #map {
             width: 100vw;
             height: 100vh;
+            z-index: 1;
         }
 
         /* زر نسخة الجوال في أقصى الشمال الشرقي (أعلى اليمين تماماً) */
@@ -44,7 +46,24 @@
             background: #732d91 !important;
         }
 
-        /* لوحة التحكم العلوية (تم إزاحتها لليسار قليلاً لتفادي التداخل مع زر الجوال) */
+        /* زر قائمة الهامبرغر (☰) الخاصة بالجوال */
+        .mobile-menu-btn {
+            display: none;
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            z-index: 3000;
+            background: #2c3e50;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 18px;
+            cursor: pointer;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        }
+
+        /* لوحة التحكم العلوية لسطح المكتب */
         .control-panel {
             position: absolute;
             top: 15px;
@@ -100,7 +119,7 @@
             background: #2c3e50 !important;
         }
 
-        /* لوحة الإحصائيات العلوية اليسرى */
+        /* لوحة إحصائيات المشروع (العلوية اليسرى) */
         .stats-panel {
             position: absolute;
             top: 15px;
@@ -114,6 +133,7 @@
             font-size: 12px;
             color: #2c3e50;
             width: 180px;
+            transition: all 0.3s ease;
         }
         .stats-panel h4 {
             margin: 0 0 8px 0;
@@ -128,12 +148,16 @@
         }
 
         /* الأزرار العائمة على اليمين */
-        .geo-tool-icon-btn {
+        .floating-tools-group {
             position: absolute;
             top: 75px;
             right: 15px;
             z-index: 1000;
-            background: #2c3e50;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .floating-tools-group button {
             color: white;
             border: none;
             padding: 10px 14px;
@@ -142,233 +166,41 @@
             font-size: 14px;
             box-shadow: 0 2px 10px rgba(0,0,0,0.2);
             font-weight: bold;
-        }
-        .geo-tool-icon-btn:hover {
-            background: #34495e;
-        }
-
-        .transform-tool-btn {
-            position: absolute;
-            top: 75px;
-            right: 190px;
-            z-index: 1000;
-            background: #d35400;
-            color: white;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            font-weight: bold;
-        }
-        .transform-tool-btn:hover {
-            background: #ba4a00;
-        }
-
-        .query-tool-btn {
-            position: absolute;
-            top: 130px;
-            right: 15px;
-            z-index: 1000;
-            background: #8e44ad;
-            color: white;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            font-weight: bold;
-        }
-        .query-tool-btn:hover {
-            background: #732d91;
-        }
-
-        .basemap-tool-btn {
-            position: absolute;
-            top: 130px;
-            right: 145px;
-            z-index: 1000;
-            background: #16a085;
-            color: white;
-            border: none;
-            padding: 10px 14px;
-            border-radius: 8px;
-            cursor: pointer;
-            font-size: 14px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-            font-weight: bold;
-        }
-        .basemap-tool-btn:hover {
-            background: #138d75;
-        }
-
-        /* نافذة أدوات القياس المنبثقة */
-        .geo-modal {
-            position: absolute;
-            top: 185px;
-            right: 15px;
-            z-index: 2000;
-            background: white;
-            width: 330px;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: none;
-            direction: rtl;
-            max-height: 480px;
-            overflow-y: auto;
-        }
-
-        /* نافذة تحويل الإحداثيات المنبثقة */
-        .transform-modal {
-            position: absolute;
-            top: 135px;
-            right: 190px;
-            z-index: 2000;
-            background: white;
-            width: 330px;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: none;
-            direction: rtl;
-        }
-
-        /* نافذة الاستعلام وإدارة النقاط المنبثقة */
-        .query-modal {
-            position: absolute;
-            top: 185px;
-            right: 15px;
-            z-index: 2000;
-            background: white;
-            width: 370px;
-            padding: 15px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: none;
-            direction: rtl;
-            max-height: 500px;
-            overflow-y: auto;
-        }
-
-        /* نافذة الملف الشخصي للمستخدم */
-        .profile-modal {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 4000;
-            background: white;
-            width: 320px;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            display: none;
-            direction: rtl;
-        }
-
-        /* نافذة نموذج إضافة نقطة جديدة الذكية */
-        .add-point-modal {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 4000;
-            background: white;
-            width: 350px;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            display: none;
-            direction: rtl;
-        }
-
-        /* نافذة جدول تحرير وتدقيق الملفات المستوردة */
-        .table-modal {
-            position: absolute;
-            top: 80px;
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 3000;
-            background: white;
-            width: 80vw;
-            max-width: 900px;
-            max-height: 80vh;
-            padding: 20px;
-            border-radius: 8px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
-            display: none;
-            direction: rtl;
-            overflow-y: auto;
-        }
-        .table-modal table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 10px;
-            margin-bottom: 15px;
-        }
-        .table-modal th, .table-modal td {
-            border: 1px solid #ccc;
-            padding: 6px 8px;
-            font-size: 12px;
-            text-align: center;
-        }
-        .table-modal th {
-            background: #2c3e50;
-            color: white;
-        }
-        .table-modal input {
-            width: 100%;
-            box-sizing: border-box;
-            border: none;
-            padding: 4px;
-            font-size: 12px;
-            text-align: center;
-            background: transparent;
-        }
-        .table-modal input:focus {
-            outline: 1px solid #2980b9;
-            background: #fff;
-        }
-        /* تمييز الأخطاء بخط تحت النص */
-        .has-error {
-            border-bottom: 2px dashed #e74c3c !important;
-            color: #c0392b;
-            font-weight: bold;
-        }
-
-        /* قائمة تبديل الخرائط المنبثقة */
-        .basemap-dropdown {
-            position: absolute;
-            top: 185px;
-            right: 145px;
-            z-index: 2000;
-            background: white;
-            width: 180px;
-            padding: 10px;
-            border-radius: 8px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
-            display: none;
-            direction: rtl;
-        }
-        .basemap-dropdown button {
-            width: 100%;
-            padding: 6px;
-            margin-bottom: 5px;
-            background: #f0f3f4;
-            border: 1px solid #d5dbdb;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-            font-weight: bold;
-            color: #2c3e50;
             text-align: right;
+            transition: background 0.3s;
         }
-        .basemap-dropdown button:hover {
-            background: #d5dbdb;
+        .geo-tool-icon-btn { background: #2c3e50; }
+        .geo-tool-icon-btn:hover { background: #34495e; }
+
+        .transform-tool-btn { background: #d35400; }
+        .transform-tool-btn:hover { background: #ba4a00; }
+
+        .query-tool-btn { background: #8e44ad; }
+        .query-tool-btn:hover { background: #732d91; }
+
+        .basemap-tool-btn { background: #16a085; }
+        .basemap-tool-btn:hover { background: #138d75; }
+
+        /* النوافذ المنبثقة العامة */
+        .geo-modal, .transform-modal, .query-modal, .profile-modal, .add-point-modal, .table-modal, .basemap-dropdown {
+            position: absolute;
+            z-index: 2000;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+            display: none;
+            direction: rtl;
         }
+        .geo-modal { top: 75px; right: 190px; width: 330px; padding: 15px; max-height: 480px; overflow-y: auto; }
+        .transform-modal { top: 135px; right: 190px; width: 330px; padding: 15px; }
+        .query-modal { top: 75px; right: 190px; width: 370px; padding: 15px; max-height: 500px; overflow-y: auto; }
+        .profile-modal, .add-point-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 350px; padding: 20px; z-index: 4000; }
+        .table-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 80vw; max-width: 900px; max-height: 80vh; padding: 20px; overflow-y: auto; z-index: 3000; }
+        .basemap-dropdown { top: 190px; right: 190px; width: 180px; padding: 10px; }
+        .basemap-dropdown button {
+            width: 100%; padding: 6px; margin-bottom: 5px; background: #f0f3f4; border: 1px solid #d5dbdb; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: bold; color: #2c3e50; text-align: right;
+        }
+        .basemap-dropdown button:hover { background: #d5dbdb; }
 
         /* صندوق نتائج القياس التفاعلي بالماوس اليمين */
         .rightclick-measure-box {
@@ -414,164 +246,102 @@
             background: #2980b9;
             color: white;
         }
-        .tab-content {
-            display: none;
-        }
-        .tab-content.active {
-            display: block;
-        }
-        .form-group {
-            margin-bottom: 10px;
-        }
-        .form-group label {
-            display: block;
-            font-size: 12px;
-            margin-bottom: 3px;
-            color: #555;
-            font-weight: bold;
-        }
-        .form-group input, .form-group select {
-            width: 100%;
-            padding: 6px;
-            box-sizing: border-box;
-            border: 1px solid #ccc;
-            border-radius: 4px;
-            font-size: 13px;
-        }
-        .result-box {
-            margin-top: 10px;
-            padding: 8px;
-            background: #e8f8f5;
-            border: 1px solid #a3e4d7;
-            border-radius: 4px;
-            font-size: 12px;
-            color: #117a65;
-            font-weight: bold;
-        }
-        .close-modal {
-            float: left;
-            background: none;
-            border: none;
-            color: #e74c3c;
-            font-weight: bold;
-            cursor: pointer;
-            font-size: 14px;
-        }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .form-group { margin-bottom: 10px; }
+        .form-group label { display: block; font-size: 12px; margin-bottom: 3px; color: #555; font-weight: bold; }
+        .form-group input, .form-group select { width: 100%; padding: 6px; box-sizing: border-box; border: 1px solid #ccc; border-radius: 4px; font-size: 13px; }
+        .result-box { margin-top: 10px; padding: 8px; background: #e8f8f5; border: 1px solid #a3e4d7; border-radius: 4px; font-size: 12px; color: #117a65; font-weight: bold; }
+        .close-modal { float: left; background: none; border: none; color: #e74c3c; font-weight: bold; cursor: pointer; font-size: 14px; }
         .clear-map-btn {
-            width: 100%;
-            margin-top: 12px;
-            padding: 8px;
-            background: #e67e22;
-            color: white;
-            border: none;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 13px;
-            font-weight: bold;
-            transition: background 0.3s;
+            width: 100%; margin-top: 12px; padding: 8px; background: #e67e22; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 13px; font-weight: bold; transition: background 0.3s;
         }
-        .clear-map-btn:hover {
-            background: #d35400;
-        }
+        .clear-map-btn:hover { background: #d35400; }
 
         /* تنسيق قائمة الاستعلام والنقاط */
-        .point-card {
-            background: #f8f9f9;
-            border: 1px solid #d5dbdb;
-            border-radius: 6px;
-            padding: 8px 10px;
-            margin-bottom: 8px;
+        .point-card { background: #f8f9f9; border: 1px solid #d5dbdb; border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; }
+        .point-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: bold; color: #2c3e50; font-size: 13px; }
+        .point-details { display: none; margin-top: 8px; padding-top: 8px; border-top: 1px dashed #ccc; font-size: 12px; color: #555; }
+        .delete-btn { background: #e74c3c; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .delete-btn:hover { background: #c0392b; }
+        .edit-btn { background: #2980b9; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; margin-left: 5px; }
+        .edit-btn:hover { background: #1f618d; }
+        .card-goto-btn { background: #16a085; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: bold; margin-left: 5px; }
+        .card-goto-btn:hover { background: #138d75; }
+        .add-btn { width: 100%; background: #27ae60; color: white; border: none; padding: 8px; border-radius: 4px; font-weight: bold; cursor: pointer; margin-bottom: 10px; font-size: 13px; }
+        .add-btn:hover { background: #219653; }
+
+        .table-modal table { width: 100%; border-collapse: collapse; margin-top: 10px; margin-bottom: 15px; }
+        .table-modal th, .table-modal td { border: 1px solid #ccc; padding: 6px 8px; font-size: 12px; text-align: center; }
+        .table-modal th { background: #2c3e50; color: white; }
+        .table-modal input { width: 100%; box-sizing: border-box; border: none; padding: 4px; font-size: 12px; text-align: center; background: transparent; }
+        .table-modal input:focus { outline: 1px solid #2980b9; background: #fff; }
+        .has-error { border-bottom: 2px dashed #e74c3c !important; color: #c0392b; font-weight: bold; }
+
+        /* ========================================================
+           تنسيق نسخة الجوال المتقدمة (Mobile Drawer & Responsive View)
+        ======================================================== */
+        body.mobile-mode .mobile-menu-btn {
+            display: block; /* إظهار زر ☰ عند تفعيل نسخة الجوال */
         }
-        .point-header {
+        
+        body.mobile-mode .control-panel {
+            position: fixed;
+            top: 0;
+            right: -280px; /* القائمة مخفية تماماً خارج الشاشة جهة اليمين */
+            width: 260px;
+            height: 100vh;
+            background: white;
+            flex-direction: column;
+            align-items: stretch;
+            padding: 60px 15px 20px 15px;
+            box-shadow: -4px 0 15px rgba(0,0,0,0.3);
+            z-index: 2500;
+            overflow-y: auto;
+            transition: right 0.3s ease-in-out;
+        }
+
+        body.mobile-mode .control-panel.open {
+            right: 0; /* سحب القائمة لداخل الشاشة عند الضغط على ☰ */
+        }
+
+        body.mobile-mode .control-panel input, 
+        body.mobile-mode .control-panel button {
+            width: 100% !important;
+            margin-bottom: 6px;
+        }
+
+        body.mobile-mode .floating-tools-group {
+            position: fixed;
+            top: 60px;
+            right: 12px;
+            z-index: 1000;
+        }
+
+        body.mobile-mode .stats-panel {
+            top: auto;
+            bottom: 10px;
+            left: 10px;
+            right: 10px;
+            width: auto;
+            font-size: 11px;
+            padding: 8px 12px;
             display: flex;
             justify-content: space-between;
             align-items: center;
-            cursor: pointer;
-            font-weight: bold;
-            color: #2c3e50;
-            font-size: 13px;
+            flex-wrap: wrap;
         }
-        .point-details {
-            display: none;
-            margin-top: 8px;
-            padding-top: 8px;
-            border-top: 1px dashed #ccc;
-            font-size: 12px;
-            color: #555;
-        }
-        .delete-btn {
-            background: #e74c3c;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: bold;
-        }
-        .delete-btn:hover {
-            background: #c0392b;
-        }
-        .edit-btn {
-            background: #2980b9;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-        .edit-btn:hover {
-            background: #1f618d;
-        }
-        .card-goto-btn {
-            background: #16a085;
-            color: white;
-            border: none;
-            padding: 4px 8px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 11px;
-            font-weight: bold;
-            margin-left: 5px;
-        }
-        .card-goto-btn:hover {
-            background: #138d75;
-        }
-        .add-btn {
-            width: 100%;
-            background: #27ae60;
-            color: white;
-            border: none;
-            padding: 8px;
-            border-radius: 4px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 10px;
-            font-size: 13px;
-        }
-        .add-btn:hover {
-            background: #219653;
-        }
+        body.mobile-mode .stats-panel h4 { display: none; }
+        body.mobile-mode .stats-panel div { margin: 0 4px; }
 
-        /* تخصيص وضع نسخة الجوال (تُفعل حصرياً عند الضغط على زر نسخة الجوال) */
-        body.mobile-mode .control-panel {
-            top: 5px; right: 5px; left: 5px; width: auto; flex-direction: column; align-items: stretch; padding: 8px;
-        }
-        body.mobile-mode .control-panel input, body.mobile-mode .control-panel button {
-            width: 100%; margin-bottom: 4px;
-        }
-        body.mobile-mode .stats-panel {
-            top: auto; bottom: 10px; left: 10px; right: 10px; width: auto; font-size: 11px; padding: 8px;
-        }
-        body.mobile-mode .geo-tool-icon-btn,
-        body.mobile-mode .transform-tool-btn,
-        body.mobile-mode .query-tool-btn,
-        body.mobile-mode .basemap-tool-btn {
-            position: relative !important; top: auto !important; right: auto !important; left: auto !important;
-            margin: 3px 0; width: 100%; display: block; text-align: center;
+        body.mobile-mode .geo-modal, 
+        body.mobile-mode .transform-modal, 
+        body.mobile-mode .query-modal {
+            top: 65px;
+            left: 5%;
+            right: 5%;
+            width: 90%;
+            max-height: 75vh;
         }
     </style>
 </head>
@@ -579,9 +349,11 @@
 
     <!-- زر نسخة الجوال في أقصى الشمال الشرقي (أعلى اليمين) -->
     <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
+    <!-- زر قائمة الهامبرغر الجانبية (☰) لجوال -->
+    <button class="mobile-menu-btn" onclick="toggleMobileDrawer()">☰</button>
 
     <!-- لوحة التحكم العلوية -->
-    <div class="control-panel">
+    <div class="control-panel" id="controlPanel">
         <input type="text" id="searchInput" placeholder="ابحث برقم أو اسم النقطة..." onkeyup="filterPoints()">
         <input type="text" id="gotoInput" placeholder="انتقل إلى نقطة..." onkeypress="handleGotoEnter(event)">
         <button class="goto-btn" onclick="goToPoint()">Go To 🎯</button>
@@ -662,10 +434,12 @@
     </div>
 
     <!-- الأزرار العائمة -->
-    <button class="geo-tool-icon-btn" onclick="toggleGeoModal()">📐📏 أدوات القياس الهندسية</button>
-    <button class="transform-tool-btn" onclick="toggleTransformModal()">🌐 تحويل الإحداثيات</button>
-    <button class="query-tool-btn" onclick="toggleQueryModal()">🔍 استعلام النقاط</button>
-    <button class="basemap-tool-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
+    <div class="floating-tools-group">
+        <button class="geo-tool-icon-btn" onclick="toggleGeoModal()">📐📏 أدوات القياس الهندسية</button>
+        <button class="transform-tool-btn" onclick="toggleTransformModal()">🌐 تحويل الإحداثيات</button>
+        <button class="query-tool-btn" onclick="toggleQueryModal()">🔍 استعلام النقاط</button>
+        <button class="basemap-tool-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
+    </div>
 
     <!-- قائمة تبديل خرائط الأساس -->
     <div class="basemap-dropdown" id="basemapDropdown">
@@ -686,7 +460,7 @@
     <div class="table-modal" id="tableModal">
         <button class="close-modal" onclick="document.getElementById('tableModal').style.display='none'">✕</button>
         <h4>جدول تدقيق وتعديل بيانات الملف المستورَد</h4>
-        <p style="font-size:11px; color:#7f8c8d; margin-top:0;">الخلايا التي تحتوي على أخطاء أو قيم غير صالحة تظهر بخط سفلي متقطع. اضغط Enter للانتقال للخانة التالية.</p>
+        <p style="font-size:11px; color:#7f8c8d; margin-top:0;">الخلايا التي تحتوي على أخطاء أو قيم غير صالحة تظهر بخط سفلي متقطع. استخدم <b>الأسهم</b> للانتقال بين الخلايا، أو Enter للنزول.</p>
         <div style="overflow-x: auto; max-height: 400px;">
             <table id="importTable">
                 <thead>
@@ -890,6 +664,7 @@
             document.getElementById('profileUsername').value = userProfile.username;
             document.getElementById('profilePassword').value = userProfile.password;
             document.getElementById('profileModal').style.display = 'block';
+            closeAllModalsExcept('profileModal');
         }
 
         function saveProfileChanges() {
@@ -903,12 +678,22 @@
             document.getElementById('profileModal').style.display = 'none';
         }
 
-        // تفعيل / إلغاء وضع نسخة الجوال عند الضغط على زر نسخة الجوال العلوي
+        // تفعيل / إلغاء وضع نسخة الجوال والتحكم بالقائمة الجانبية
         function toggleMobileView() {
             const body = document.getElementById('mainBody');
             body.classList.toggle('mobile-mode');
             const isMobile = body.classList.contains('mobile-mode');
-            alert(isMobile ? 'تم تفعيل نسخة الجوال بنجاح!' : 'تم العودة للوضع العادي!');
+            const controlPanel = document.getElementById('controlPanel');
+            if(!isMobile) {
+                controlPanel.classList.remove('open');
+            }
+            alert(isMobile ? 'تم تفعيل نسخة الجوال بنجاح! اضغط على زر (☰) في أعلى اليسار لإظهار/إخفاء القائمة.' : 'تم العودة للوضع العادي!');
+        }
+
+        // فتح وإغلاق القائمة الجانبية للجوال عند الضغط على زر الهامبرغر
+        function toggleMobileDrawer() {
+            const controlPanel = document.getElementById('controlPanel');
+            controlPanel.classList.toggle('open');
         }
 
         // إنشاء الخريطة وتحديد مركز العرض ومستوى التقريب
@@ -974,6 +759,7 @@
         function toggleBasemapDropdown() {
             const drop = document.getElementById('basemapDropdown');
             drop.style.display = drop.style.display === 'block' ? 'none' : 'block';
+            closeAllModalsExcept('basemapDropdown');
         }
 
         function changeBasemap(type) {
@@ -1362,6 +1148,7 @@
 
         let stagingImportData = [];
 
+        // الخاصية الأولى: الترتيب والترقيم التلقائي التام عند رفع الملفات في حال عدم وجودها
         function importGeoJSONFile(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -1382,9 +1169,13 @@
                     features.forEach((f, idx) => {
                         let coords = f.geometry ? f.geometry.coordinates : (f.coordinates || [0, 0]);
                         let props = f.properties || f;
+                        
+                        let autoId = (props.point_id !== undefined && props.point_id !== '') ? props.point_id : ((props.id !== undefined && props.id !== '') ? props.id : (idx + 1));
+                        let autoName = (props.name !== undefined && props.name !== '') ? props.name : ((props.ID !== undefined && props.ID !== '') ? props.ID : ('G_' + (idx + 1)));
+
                         stagingImportData.push({
-                            point_id: props.point_id || props.id || (idx + 1),
-                            name: props.name || props.ID || ('G_' + (idx + 1)),
+                            point_id: autoId,
+                            name: autoName,
                             latitude: coords[1] !== undefined ? coords[1] : '',
                             longitude: coords[0] !== undefined ? coords[0] : '',
                             elevation: props.elevation !== undefined ? props.elevation : (props.elevation_m !== undefined ? props.elevation_m : ''),
@@ -1408,14 +1199,19 @@
                 try {
                     const lines = e.target.result.split('\n');
                     stagingImportData = [];
+                    let rowIndex = 0;
                     for (let i = 1; i < lines.length; i++) {
                         const line = lines[i].trim();
                         if (!line) continue;
+                        rowIndex++;
                         const cols = line.split(',').map(item => item.replace(/"/g, '').trim());
                         if (cols.length >= 2) {
+                            let autoId = cols[0] !== undefined && cols[0] !== '' ? cols[0] : rowIndex;
+                            let autoName = cols[1] !== undefined && cols[1] !== '' ? cols[1] : ('G_' + rowIndex);
+
                             stagingImportData.push({
-                                point_id: cols[0] || (i),
-                                name: cols[1] || ('G_' + i),
+                                point_id: autoId,
+                                name: autoName,
                                 latitude: cols[2] !== undefined ? cols[2] : '',
                                 longitude: cols[3] !== undefined ? cols[3] : '',
                                 elevation: cols[4] !== undefined ? cols[4] : '',
@@ -1432,7 +1228,7 @@
             reader.readAsText(file);
         }
 
-        // جدول الاستيراد مع خاصية القفز للخانة التالية عند ضغط Enter
+        // جدول الاستيراد مع خاصية القفز للخانة التالية عند ضغط Enter والأسهم
         function renderImportTable() {
             const tbody = document.getElementById('importTableBody');
             tbody.innerHTML = '';
@@ -1442,13 +1238,13 @@
 
                 const tr = document.createElement('tr');
                 tr.innerHTML = `
-                    <td><input type="text" class="import-cell" value="${row.point_id}" onchange="updateStagingData(${index}, 'point_id', this.value)" onkeydown="handleTableEnter(event, this)"></td>
-                    <td><input type="text" class="import-cell" value="${row.name}" onchange="updateStagingData(${index}, 'name', this.value)" onkeydown="handleTableEnter(event, this)"></td>
-                    <td><input type="text" class="import-cell ${latErr ? 'has-error' : ''}" value="${row.latitude}" onchange="updateStagingData(${index}, 'latitude', this.value)" onkeydown="handleTableEnter(event, this)"></td>
-                    <td><input type="text" class="import-cell ${lonErr ? 'has-error' : ''}" value="${row.longitude}" onchange="updateStagingData(${index}, 'longitude', this.value)" onkeydown="handleTableEnter(event, this)"></td>
-                    <td><input type="text" class="import-cell" value="${row.elevation}" onchange="updateStagingData(${index}, 'elevation', this.value)" onkeydown="handleTableEnter(event, this)"></td>
-                    <td><input type="text" class="import-cell" value="${row.type}" onchange="updateStagingData(${index}, 'type', this.value)" onkeydown="handleTableEnter(event, this)"></td>
-                    <td><input type="text" class="import-cell" value="${row.description}" onchange="updateStagingData(${index}, 'description', this.value)" onkeydown="handleTableEnter(event, this)"></td>
+                    <td><input type="text" class="import-cell" value="${row.point_id}" onchange="updateStagingData(${index}, 'point_id', this.value)" onkeydown="handleTableKeydown(event, this)"></td>
+                    <td><input type="text" class="import-cell" value="${row.name}" onchange="updateStagingData(${index}, 'name', this.value)" onkeydown="handleTableKeydown(event, this)"></td>
+                    <td><input type="text" class="import-cell ${latErr ? 'has-error' : ''}" value="${row.latitude}" onchange="updateStagingData(${index}, 'latitude', this.value)" onkeydown="handleTableKeydown(event, this)"></td>
+                    <td><input type="text" class="import-cell ${lonErr ? 'has-error' : ''}" value="${row.longitude}" onchange="updateStagingData(${index}, 'longitude', this.value)" onkeydown="handleTableKeydown(event, this)"></td>
+                    <td><input type="text" class="import-cell" value="${row.elevation}" onchange="updateStagingData(${index}, 'elevation', this.value)" onkeydown="handleTableKeydown(event, this)"></td>
+                    <td><input type="text" class="import-cell" value="${row.type}" onchange="updateStagingData(${index}, 'type', this.value)" onkeydown="handleTableKeydown(event, this)"></td>
+                    <td><input type="text" class="import-cell" value="${row.description}" onchange="updateStagingData(${index}, 'description', this.value)" onkeydown="handleTableKeydown(event, this)"></td>
                 `;
                 tbody.appendChild(tr);
             });
@@ -1459,7 +1255,16 @@
             stagingImportData[index][field] = value;
         }
 
-        function handleTableEnter(event, currentInput) {
+        // الخاصية الثانية: امكانية الانتقال والتنقل فى مربعات الجدول عبر الأسهم لوحة المفاتيح و Enter
+        function handleTableKeydown(event, currentInput) {
+            const cell = currentInput.closest('td');
+            const row = cell.closest('tr');
+            const tbody = row.closest('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const rowIndex = rows.indexOf(row);
+            const cells = Array.from(row.querySelectorAll('td'));
+            const cellIndex = cells.indexOf(cell);
+
             if (event.key === 'Enter') {
                 event.preventDefault();
                 const inputs = Array.from(document.querySelectorAll('.import-cell'));
@@ -1468,29 +1273,55 @@
                     inputs[currentIndex + 1].focus();
                     inputs[currentIndex + 1].select();
                 }
+            } else if (event.key === 'ArrowDown') {
+                event.preventDefault();
+                if (rowIndex < rows.length - 1) {
+                    const nextRowInput = rows[rowIndex + 1].querySelectorAll('.import-cell')[cellIndex];
+                    if (nextRowInput) { nextRowInput.focus(); nextRowInput.select(); }
+                }
+            } else if (event.key === 'ArrowUp') {
+                event.preventDefault();
+                if (rowIndex > 0) {
+                    const prevRowInput = rows[rowIndex - 1].querySelectorAll('.import-cell')[cellIndex];
+                    if (prevRowInput) { prevRowInput.focus(); prevRowInput.select(); }
+                }
+            } else if (event.key === 'ArrowLeft') {
+                event.preventDefault();
+                if (cellIndex > 0) {
+                    const prevCellInput = cells[cellIndex - 1].querySelector('.import-cell');
+                    if (prevCellInput) { prevCellInput.focus(); prevCellInput.select(); }
+                }
+            } else if (event.key === 'ArrowRight') {
+                event.preventDefault();
+                if (cellIndex < cells.length - 1) {
+                    const nextCellInput = cells[cellIndex + 1].querySelector('.import-cell');
+                    if (nextCellInput) { nextCellInput.focus(); nextCellInput.select(); }
+                }
             }
         }
 
         function commitTableDataToMap() {
             let count = 0;
             let newPoints = [];
-            stagingImportData.forEach(row => {
+            stagingImportData.forEach((row, idx) => {
                 const lat = parseFloat(row.latitude);
                 const lon = parseFloat(row.longitude);
                 if (!isNaN(lat) && !isNaN(lon)) {
-                    const pId = parseInt(row.point_id) || Math.floor(Math.random() * 900000) + 100000;
+                    const pId = row.point_id !== undefined && row.point_id !== '' ? row.point_id : (idx + 1);
+                    const pName = row.name !== undefined && row.name !== '' ? row.name : ('G_' + (idx + 1));
+                    
                     const pointData = {
                         point_id: pId,
                         id: pId,
-                        name: row.name,
+                        name: pName,
                         latitude: lat,
                         lat: lat,
                         longitude: lon,
                         lon: lon,
                         elevation_m: row.elevation !== '' ? parseFloat(row.elevation) : null,
                         elevation: row.elevation !== '' ? parseFloat(row.elevation) : null,
-                        type: row.type,
-                        description: row.description
+                        type: row.type || 'Secondary',
+                        description: row.description || ''
                     };
                     newPoints.push(pointData);
                     count++;
