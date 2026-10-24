@@ -55,7 +55,7 @@
             background: #732d91 !important;
         }
 
-        /* زر تبديل الخريطة العلوي لسطح المكتب */
+        /* زر تبديل الخريطة العلوي لسطح المكتب (تمت إزالته من أعلى وبقاء زر القائمة العائمة) */
         .top-basemap-btn {
             background: #16a085 !important;
             color: white;
@@ -483,10 +483,9 @@
 </head>
 <body id="mainBody">
 
-    <!-- حاوية أزرار أقصى الشمال الشرقي -->
+    <!-- حاوية أزرار أقصى الشمال الشرقي (تم حذف زر تبديل الخريطة المكرر المجاور لنسخة الجوال) -->
     <div class="top-right-container">
         <button class="mobile-toggle-btn" onclick="toggleMobileView()">📱 نسخة الجوال</button>
-        <button class="top-basemap-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
     </div>
     
     <!-- القائمة المنسدلة البديلة لزر الثلاث شرطات في الجوال -->
@@ -1315,9 +1314,9 @@
                         <b>الارتفاع:</b> ${pElev !== null && pElev !== undefined ? pElev + ' متر' : 'غير متوفر'}<br>
                         <b>النوع:</b> ${p.type || 'جيوديسي'}<br>
                         <b>الوصف:</b> ${p.description || 'لا يوجد'}<br><br>
-                        <button class="edit-btn" onclick="editPointInTable(${pId})">تعديل النقطة (في جدول)</button>
-                        <button class="card-goto-btn" onclick="goToPointByIdModal(${pId})">Go To 🎯</button>
-                        <button class="delete-btn" onclick="deletePoint(${pId}, '${pName}')">حذف النقطة</button>
+                        <button class="edit-btn" onclick="editPointInTable('${pId}')">تعديل النقطة (في جدول)</button>
+                        <button class="card-goto-btn" onclick="goToPointByIdModal('${pId}')">Go To 🎯</button>
+                        <button class="delete-btn" onclick="deletePoint('${pId}', '${pName}')">حذف النقطة</button>
                     </div>
                 `;
                 container.appendChild(card);
@@ -1341,7 +1340,7 @@
         }
 
         function editPointInTable(pointId) {
-            const p = allPointsData.find(item => (item.point_id === pointId || item.id === pointId));
+            const p = allPointsData.find(item => (String(item.point_id) === String(pointId) || String(item.id) === String(pointId)));
             if (!p) return;
 
             toggleQueryModal();
@@ -1389,12 +1388,16 @@
                 description: row.description
             };
 
-            const index = allPointsData.findIndex(item => (item.point_id === pointId || item.id === pointId));
+            const index = allPointsData.findIndex(item => (String(item.point_id) === String(pointId) || String(item.id) === String(pointId)));
             if (index !== -1) {
                 allPointsData[index] = updatedPoint;
                 displayMarkers(allPointsData);
                 updateStatistics(allPointsData);
             }
+
+            const commitBtn = document.getElementById('tableCommitBtn');
+            commitBtn.innerText = 'عرض وحفظ النقاط على الخريطة 🚀';
+            commitBtn.onclick = commitTableDataToMap;
 
             document.getElementById('tableModal').style.display = 'none';
             showNotification('تم تحديث وتعديل بيانات النقطة بنجاح!', 'success');
@@ -1410,7 +1413,7 @@
             }
 
             if (confirm(`هل أنت متأكد من رغبتك في حذف النقطة (${pointName})؟`)) {
-                allPointsData = allPointsData.filter(item => (item.point_id !== pointId && item.id !== pointId));
+                allPointsData = allPointsData.filter(item => (String(item.point_id) !== String(pointId) && String(item.id) !== String(pointId)));
                 displayMarkers(allPointsData);
                 updateStatistics(allPointsData);
 
