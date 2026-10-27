@@ -133,6 +133,8 @@
         .save-btn:hover { background: #ba4a00 !important; }
         .profile-btn { background: #34495e !important; }
         .profile-btn:hover { background: #2c3e50 !important; }
+        .transform-inline-btn { background: #d35400 !important; }
+        .transform-inline-btn:hover { background: #ba4a00 !important; }
 
         /* لوحة إحصائيات المشروع (العلوية اليسرى) */
         .stats-panel {
@@ -162,7 +164,7 @@
             font-weight: bold;
         }
 
-        /* الأزرار العائمة على اليمين لسطح المكتب */
+        /* الأزرار العائمة على اليمين لسطح المكتب (بدون زر التحويل الذي تم نقله للأعلى) */
         .floating-tools-group {
             position: absolute;
             top: 75px;
@@ -187,9 +189,6 @@
         .geo-tool-icon-btn { background: #2c3e50; }
         .geo-tool-icon-btn:hover { background: #34495e; }
 
-        .transform-tool-btn { background: #d35400; }
-        .transform-tool-btn:hover { background: #ba4a00; }
-
         .query-tool-btn { background: #8e44ad; }
         .query-tool-btn:hover { background: #732d91; }
 
@@ -207,7 +206,7 @@
             direction: rtl;
         }
         .geo-modal { top: 75px; right: 190px; width: 330px; padding: 15px; max-height: 520px; overflow-y: auto; }
-        .transform-modal { top: 135px; right: 190px; width: 330px; padding: 15px; }
+        .transform-modal { top: 75px; right: 285px; width: 330px; padding: 15px; }
         .query-modal { top: 75px; right: 190px; width: 370px; padding: 15px; max-height: 500px; overflow-y: auto; }
         .profile-modal, .add-point-modal, .save-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 350px; padding: 20px; z-index: 4000; }
         .table-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 85vw; max-width: 950px; max-height: 85vh; padding: 20px; overflow-y: auto; z-index: 3000; }
@@ -514,9 +513,10 @@
         <br><span style="font-size:11px; color:#f1c40f;">انقر بزر الماوس الأيمن (أو مطولاً بالجوال) لتأكيد تثبيت النقطة وحفظها!</span>
     </div>
 
-    <!-- لوحة التحكم العلوية لسطح المكتب -->
+    <!-- لوحة التحكم العلوية لسطح المكتب (متضمنة زر تحويل الإحداثيات الآن) -->
     <div class="control-panel" id="controlPanel">
         <input type="text" id="searchInput" placeholder="ابحث برقم أو اسم النقطة..." onkeyup="filterPoints()">
+        <button class="transform-inline-btn" onclick="toggleTransformModal()">🌐 تحويل الإحداثيات</button>
         <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
         <button class="profile-btn" onclick="openProfileModal()">👤 الملف الشخصي</button>
         
@@ -612,10 +612,9 @@
         <div>أقل ارتفاع (Z): <span id="statMinZ">-</span></div>
     </div>
 
-    <!-- الأزرار العائمة لسطح المكتب -->
+    <!-- الأزرار العائمة لسطح المكتب (تم نقل زر التحويل إلى اللوحة العلوية) -->
     <div class="floating-tools-group">
         <button class="geo-tool-icon-btn" onclick="toggleGeoModal()">📐📏 أدوات القياس الهندسية</button>
-        <button class="transform-tool-btn" onclick="toggleTransformModal()">🌐 تحويل الإحداثيات</button>
         <button class="query-tool-btn" onclick="toggleQueryModal()">🔍 استعلام النقاط</button>
         <button class="basemap-tool-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
     </div>
