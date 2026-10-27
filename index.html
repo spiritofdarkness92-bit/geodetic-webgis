@@ -133,8 +133,6 @@
         .save-btn:hover { background: #ba4a00 !important; }
         .profile-btn { background: #34495e !important; }
         .profile-btn:hover { background: #2c3e50 !important; }
-        .transform-inline-btn { background: #d35400 !important; }
-        .transform-inline-btn:hover { background: #ba4a00 !important; }
 
         /* لوحة إحصائيات المشروع (العلوية اليسرى) */
         .stats-panel {
@@ -164,7 +162,7 @@
             font-weight: bold;
         }
 
-        /* الأزرار العائمة على اليمين لسطح المكتب (بدون زر التحويل الذي تم نقله للأعلى) */
+        /* الأزرار العائمة على اليمين لسطح المكتب */
         .floating-tools-group {
             position: absolute;
             top: 75px;
@@ -189,6 +187,9 @@
         .geo-tool-icon-btn { background: #2c3e50; }
         .geo-tool-icon-btn:hover { background: #34495e; }
 
+        .transform-tool-btn { background: #d35400; }
+        .transform-tool-btn:hover { background: #ba4a00; }
+
         .query-tool-btn { background: #8e44ad; }
         .query-tool-btn:hover { background: #732d91; }
 
@@ -205,8 +206,8 @@
             display: none;
             direction: rtl;
         }
-        .geo-modal { top: 75px; right: 190px; width: 330px; padding: 15px; max-height: 520px; overflow-y: auto; }
-        .transform-modal { top: 75px; right: 285px; width: 330px; padding: 15px; }
+        .geo-modal { top: 75px; right: 190px; width: 340px; padding: 15px; max-height: 560px; overflow-y: auto; }
+        .transform-modal { top: 135px; right: 190px; width: 330px; padding: 15px; }
         .query-modal { top: 75px; right: 190px; width: 370px; padding: 15px; max-height: 500px; overflow-y: auto; }
         .profile-modal, .add-point-modal, .save-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 350px; padding: 20px; z-index: 4000; }
         .table-modal { top: 80px; left: 50%; transform: translateX(-50%); width: 85vw; max-width: 950px; max-height: 85vh; padding: 20px; overflow-y: auto; z-index: 3000; }
@@ -513,10 +514,9 @@
         <br><span style="font-size:11px; color:#f1c40f;">انقر بزر الماوس الأيمن (أو مطولاً بالجوال) لتأكيد تثبيت النقطة وحفظها!</span>
     </div>
 
-    <!-- لوحة التحكم العلوية لسطح المكتب (متضمنة زر تحويل الإحداثيات الآن) -->
+    <!-- لوحة التحكم العلوية لسطح المكتب -->
     <div class="control-panel" id="controlPanel">
         <input type="text" id="searchInput" placeholder="ابحث برقم أو اسم النقطة..." onkeyup="filterPoints()">
-        <button class="transform-inline-btn" onclick="toggleTransformModal()">🌐 تحويل الإحداثيات</button>
         <button class="save-btn" onclick="openSaveMenu()">💾 حفظ</button>
         <button class="profile-btn" onclick="openProfileModal()">👤 الملف الشخصي</button>
         
@@ -544,10 +544,10 @@
         <button class="tool-btn" style="width:100%; background:#27ae60;" onclick="saveProfileChanges()">حفظ وتحديث الصلاحيات</button>
     </div>
 
-    <!-- نافذة نموذج إضافة نقطة جديدة (متضمنة حساب الارتفاع الأورثومتري RTK & Geoid) -->
+    <!-- نافذة نموذج إضافة نقطة جديدة -->
     <div class="add-point-modal" id="addPointModal">
         <button class="close-modal" onclick="document.getElementById('addPointModal').style.display='none'">✕</button>
-        <h4>إضافة نقطة تحكم جديدة (RTK & Geoid)</h4>
+        <h4>إضافة نقطة تحكم جديدة</h4>
         <div class="form-group">
             <label>رقم النقطة (Point ID):</label>
             <input type="number" id="newPointId" placeholder="مثال: 101" onkeydown="handleFormEnter(event, 'newName')">
@@ -558,23 +558,15 @@
         </div>
         <div class="form-group">
             <label>خط العرض (Latitude):</label>
-            <input type="number" step="any" id="newLat" placeholder="مثال: 26.82" oninput="calculateMSLPreview()" onkeydown="handleFormEnter(event, 'newLon')">
+            <input type="number" step="any" id="newLat" placeholder="مثال: 26.82" onkeydown="handleFormEnter(event, 'newLon')">
         </div>
         <div class="form-group">
             <label>خط الطول (Longitude):</label>
-            <input type="number" step="any" id="newLon" placeholder="مثال: 30.80" oninput="calculateMSLPreview()" onkeydown="handleFormEnter(event, 'newEllipsoidalHeight')">
+            <input type="number" step="any" id="newLon" placeholder="مثال: 30.80" onkeydown="handleFormEnter(event, 'newElevation')">
         </div>
         <div class="form-group">
-            <label>الارتفاع الإهليلجي من جهاز RTK ($h$ - متر):</label>
-            <input type="number" step="any" id="newEllipsoidalHeight" placeholder="مثال: 150.0" oninput="calculateMSLPreview()" onkeydown="handleFormEnter(event, 'newType')">
-        </div>
-        <div class="form-group" style="background: #f4f6f7; padding: 8px; border-radius: 4px;">
-            <label style="color: #2980b9;">قيمة الجيود المحسوبة ($N$):</label>
-            <span id="previewGeoid" style="font-weight: bold; font-size: 13px;">14.500 متر</span>
-        </div>
-        <div class="form-group" style="background: #e8f8f5; padding: 8px; border-radius: 4px;">
-            <label style="color: #117a65;">الارتفاع فوق متوسط سطح البحر ($H$ - متر):</label>
-            <span id="previewMSL" style="font-weight: bold; font-size: 14px; color: #117a65;">-</span>
+            <label>الارتفاع (Elevation - متر):</label>
+            <input type="number" step="any" id="newElevation" placeholder="مثال: 150.0" onkeydown="handleFormEnter(event, 'newType')">
         </div>
         <div class="form-group">
             <label>النوع (Type):</label>
@@ -612,9 +604,10 @@
         <div>أقل ارتفاع (Z): <span id="statMinZ">-</span></div>
     </div>
 
-    <!-- الأزرار العائمة لسطح المكتب (تم نقل زر التحويل إلى اللوحة العلوية) -->
+    <!-- الأزرار العائمة لسطح المكتب -->
     <div class="floating-tools-group">
         <button class="geo-tool-icon-btn" onclick="toggleGeoModal()">📐📏 أدوات القياس الهندسية</button>
+        <button class="transform-tool-btn" onclick="toggleTransformModal()">🌐 تحويل الإحداثيات</button>
         <button class="query-tool-btn" onclick="toggleQueryModal()">🔍 استعلام النقاط</button>
         <button class="basemap-tool-btn" onclick="toggleBasemapDropdown()">🗺️ تبديل الخريطة</button>
     </div>
@@ -671,6 +664,7 @@
             <button id="tabBufferBtn" onclick="switchTab('buffer')">الحماية</button>
             <button id="tabProfileBtn" onclick="switchTab('profile')">القطاع</button>
             <button id="tabNavBtn" onclick="switchTab('nav')">التوجيه</button>
+            <button id="tabRtkBtn" onclick="switchTab('rtk')" style="background:#e67e22; color:white;">حاسبة RTK</button>
         </div>
 
         <div id="gotoPointTab" class="tab-content active">
@@ -765,6 +759,30 @@
             <div id="navResult" class="result-box" style="display:none;"></div>
         </div>
 
+        <!-- تبويب حاسبة RTK المستقل بذاته -->
+        <div id="rtkTab" class="tab-content">
+            <div class="form-group">
+                <label>خط العرض (Latitude):</label>
+                <input type="number" step="any" id="rtkLat" placeholder="مثال: 26.82" oninput="calculateStandaloneMSL()">
+            </div>
+            <div class="form-group">
+                <label>خط الطول (Longitude):</label>
+                <input type="number" step="any" id="rtkLon" placeholder="مثال: 30.80" oninput="calculateStandaloneMSL()">
+            </div>
+            <div class="form-group">
+                <label>الارتفاع الإهليلجي من جهاز RTK ($h$ - متر):</label>
+                <input type="number" step="any" id="rtkEllipsoidalHeight" placeholder="مثال: 150.0" oninput="calculateStandaloneMSL()">
+            </div>
+            <div class="form-group" style="background: #f4f6f7; padding: 8px; border-radius: 4px;">
+                <label style="color: #2980b9;">قيمة الجيود المحسوبة ($N$):</label>
+                <span id="rtkGeoidVal" style="font-weight: bold; font-size: 13px;">14.500 متر</span>
+            </div>
+            <div class="form-group" style="background: #e8f8f5; padding: 8px; border-radius: 4px;">
+                <label style="color: #117a65;">الارتفاع فوق متوسط سطح البحر ($H$ - متر):</label>
+                <span id="rtkMSLVal" style="font-weight: bold; font-size: 14px; color: #117a65;">-</span>
+            </div>
+        </div>
+
         <button class="clear-map-btn" onclick="clearMapMeasurements()">تحديث الخريطة</button>
     </div>
 
@@ -849,16 +867,16 @@
             };
         }
 
-        function calculateMSLPreview() {
-            let h = parseFloat(document.getElementById('newEllipsoidalHeight').value);
-            let lat = parseFloat(document.getElementById('newLat').value) || 0;
-            let lon = parseFloat(document.getElementById('newLon').value) || 0;
+        function calculateStandaloneMSL() {
+            let h = parseFloat(document.getElementById('rtkEllipsoidalHeight').value);
+            let lat = parseFloat(document.getElementById('rtkLat').value) || 0;
+            let lon = parseFloat(document.getElementById('rtkLon').value) || 0;
             if (!isNaN(h)) {
                 let res = calculateMeanSeaLevel(h, lat, lon);
-                document.getElementById('previewGeoid').innerText = res.geoid + " متر";
-                document.getElementById('previewMSL').innerText = res.msl + " متر";
+                document.getElementById('rtkGeoidVal').innerText = res.geoid + " متر";
+                document.getElementById('rtkMSLVal').innerText = res.msl + " متر";
             } else {
-                document.getElementById('previewMSL').innerText = "-";
+                document.getElementById('rtkMSLVal').innerText = "-";
             }
         }
 
@@ -1646,9 +1664,7 @@
             document.getElementById('newName').value = '';
             document.getElementById('newLat').value = '';
             document.getElementById('newLon').value = '';
-            document.getElementById('newEllipsoidalHeight').value = '';
-            document.getElementById('previewGeoid').innerText = '14.500 متر';
-            document.getElementById('previewMSL').innerText = '-';
+            document.getElementById('newElevation').value = '';
             document.getElementById('newType').value = 'Secondary';
             document.getElementById('newDesc').value = '';
             document.getElementById('addPointModal').style.display = 'block';
@@ -1732,7 +1748,7 @@
             const name = document.getElementById('newName').value.trim();
             const lat = document.getElementById('newLat').value.trim();
             const lon = document.getElementById('newLon').value.trim();
-            const ellipsoidalH = document.getElementById('newEllipsoidalHeight').value.trim();
+            const elevation = document.getElementById('newElevation').value.trim();
             const type = document.getElementById('newType').value.trim();
             const description = document.getElementById('newDesc').value.trim();
 
@@ -1744,12 +1760,7 @@
             const parsedId = parseInt(id) || Math.floor(Math.random() * 900000) + 100000;
             const parsedLat = parseFloat(lat);
             const parsedLon = parseFloat(lon);
-            
-            let finalElevation = null;
-            if (ellipsoidalH !== '' && !isNaN(parseFloat(ellipsoidalH))) {
-                let mslRes = calculateMeanSeaLevel(parseFloat(ellipsoidalH), parsedLat, parsedLon);
-                finalElevation = mslRes.msl;
-            }
+            const parsedElev = elevation !== '' && !isNaN(parseFloat(elevation)) ? parseFloat(elevation) : null;
 
             const newPoint = {
                 point_id: parsedId,
@@ -1759,8 +1770,8 @@
                 lat: parsedLat,
                 longitude: parsedLon,
                 lon: parsedLon,
-                elevation_m: finalElevation,
-                elevation: finalElevation,
+                elevation_m: parsedElev,
+                elevation: parsedElev,
                 type: type || 'Secondary',
                 description: description || ''
             };
@@ -1780,7 +1791,7 @@
         }
 
         function switchTab(tabName) {
-            ['gotoPoint', 'distance', 'area', 'azimuth', 'buffer', 'profile', 'nav'].forEach(t => {
+            ['gotoPoint', 'distance', 'area', 'azimuth', 'buffer', 'profile', 'nav', 'rtk'].forEach(t => {
                 const el = document.getElementById(t + 'Tab');
                 const btn = document.getElementById('tab' + t.charAt(0).toUpperCase() + t.slice(1) + 'Btn');
                 if (el) el.classList.remove('active');
@@ -2332,6 +2343,11 @@
             document.getElementById('profileStart').value = '';
             document.getElementById('profileEnd').value = '';
             document.getElementById('navTargetPoint').value = '';
+            document.getElementById('rtkLat').value = '';
+            document.getElementById('rtkLon').value = '';
+            document.getElementById('rtkEllipsoidalHeight').value = '';
+            document.getElementById('rtkGeoidVal').innerText = '14.500 متر';
+            document.getElementById('rtkMSLVal').innerText = '-';
 
             if (profileChartInstance) {
                 profileChartInstance.destroy();
