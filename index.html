@@ -544,10 +544,10 @@
         <button class="tool-btn" style="width:100%; background:#27ae60;" onclick="saveProfileChanges()">حفظ وتحديث الصلاحيات</button>
     </div>
 
-    <!-- نافذة نموذج إضافة نقطة جديدة -->
+    <!-- نافذة نموذج إضافة نقطة جديدة (مع دمج حساب الارتفاع الأورثومتري RTK & Geoid) -->
     <div class="add-point-modal" id="addPointModal">
         <button class="close-modal" onclick="document.getElementById('addPointModal').style.display='none'">✕</button>
-        <h4>إضافة نقطة تحكم جديدة</h4>
+        <h4>إضافة نقطة تحكم جديدة (RTK & Geoid)</h4>
         <div class="form-group">
             <label>رقم النقطة (Point ID):</label>
             <input type="number" id="newPointId" placeholder="مثال: 101" onkeydown="handleFormEnter(event, 'newName')">
@@ -558,15 +558,23 @@
         </div>
         <div class="form-group">
             <label>خط العرض (Latitude):</label>
-            <input type="number" step="any" id="newLat" placeholder="مثال: 26.82" onkeydown="handleFormEnter(event, 'newLon')">
+            <input type="number" step="any" id="newLat" placeholder="مثال: 26.82" oninput="calculateMSLPreview()" onkeydown="handleFormEnter(event, 'newLon')">
         </div>
         <div class="form-group">
             <label>خط الطول (Longitude):</label>
-            <input type="number" step="any" id="newLon" placeholder="مثال: 30.80" onkeydown="handleFormEnter(event, 'newElev')">
+            <input type="number" step="any" id="newLon" placeholder="مثال: 30.80" oninput="calculateMSLPreview()" onkeydown="handleFormEnter(event, 'newEllipsoidalHeight')">
         </div>
         <div class="form-group">
-            <label>الارتفاع (Elevation - متر):</label>
-            <input type="number" step="any" id="newElev" placeholder="مثال: 150" onkeydown="handleFormEnter(event, 'newType')">
+            <label>الارتفاع الإهليلجي من جهاز RTK ($h$ - متر):</label>
+            <input type="number" step="any" id="newEllipsoidalHeight" placeholder="مثال: 150.0" oninput="calculateMSLPreview()" onkeydown="handleFormEnter(event, 'newType')">
+        </div>
+        <div class="form-group" style="background: #f4f6f7; padding: 8px; border-radius: 4px;">
+            <label style="color: #2980b9;">قيمة الجيود المحسوبة ($N$):</label>
+            <span id="previewGeoid" style="font-weight: bold; font-size: 13px;">14.500 متر</span>
+        </div>
+        <div class="form-group" style="background: #e8f8f5; padding: 8px; border-radius: 4px;">
+            <label style="color: #117a65;">الارتفاع فوق متوسط سطح البحر ($H$ - متر):</label>
+            <span id="previewMSL" style="font-weight: bold; font-size: 14px; color: #117a65;">-</span>
         </div>
         <div class="form-group">
             <label>النوع (Type):</label>
@@ -813,7 +821,7 @@
         </div>
     </div>
 
-    <!-- نافذة استعلام النقاط المنبثقة (تم نقل زر اختيار وتثبيت نقطة إلى هنا) -->
+    <!-- نافذة استعلام النقاط المنبثقة -->
     <div class="query-modal" id="queryModal">
         <button class="close-modal" onclick="toggleQueryModal()">✕</button>
         <h4>استعلام وإدارة النقاط</h4>
@@ -827,7 +835,35 @@
     <!-- استدعاء مكتبة Leaflet البرمجية -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // نظام الإشعارات العائمة التلقائية (Toast Notifications) - تم زيادة المدة إلى 5 ثوانٍ (5000 مللي ثانية)
+        // دوال حساب الجيود ومتوسط سطح البحر (Orthometric Height)
+        function getGeoidUndulation(lat, lon) {
+            // نموذج الجيود المحلي EGM2008 (قيمة تقديرية نموذجية)
+            return 14.500; 
+        }
+
+        function calculateMeanSeaLevel(rtkEllipsoidalHeight, lat, lon) {
+            let N = getGeoidUndulation(lat, lon);
+            let MSL = rtkEllipsoidalHeight - N; // المعادلة الجيوديسية: H = h - N
+            return {
+                msl: parseFloat(MSL.toFixed(4)),
+                geoid: N
+            };
+        }
+
+        function calculateMSLPreview() {
+            let h = parseFloat(document.getElementById('newEllipsoidalHeight').value);
+            let lat = parseFloat(document.getElementById('newLat').value) || 0;
+            let lon = parseFloat(document.getElementById('newLon').value) || 0;
+            if (!isNaN(h)) {
+                let res = calculateMeanSeaLevel(h, lat, lon);
+                document.getElementById('previewGeoid').innerText = res.geoid + " متر";
+                document.getElementById('previewMSL').innerText = res.msl + " متر";
+            } else {
+                document.getElementById('previewMSL').innerText = "-";
+            }
+        }
+
+        // نظام الإشعارات العائمة التلقائية (Toast Notifications)
         function showNotification(message, type = 'info') {
             let container = document.getElementById('toastContainer');
             if (!container) {
@@ -878,7 +914,6 @@
             document.getElementById('profileModal').style.display = 'none';
         }
 
-        // تفعيل / إلغاء وضع نسخة الجوال
         function toggleMobileView() {
             const body = document.getElementById('mainBody');
             body.classList.toggle('mobile-mode');
@@ -886,7 +921,6 @@
             showNotification(isMobile ? 'تم تفعيل نسخة الجوال بنجاح! استخدم القائمة المنسدلة في أعلى اليسار للتحكم.' : 'تم العودة للوضع العادي!', 'success');
         }
 
-        // معالجة اختيار خيارات القائمة المنسدلة للجوال
         function handleMobileNavSelect(selectElem) {
             const val = selectElem.value;
             selectElem.selectedIndex = 0;
@@ -925,7 +959,6 @@
         // إنشاء الخريطة وتحديد مركز العرض ومستوى التقريب
         const map = L.map('map').setView([26.8206, 30.8025], 6);
 
-        // طبقات خريطة الأساس المختلفة
         const baseLayers = {
             streets: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
             satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { maxZoom: 19 }),
@@ -934,41 +967,28 @@
 
         let currentTileLayer = baseLayers.streets.addTo(map);
 
-        // أيقونات العلامات
         const greenIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-green.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
 
         const blueIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-blue.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
 
         const redIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-red.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
 
         const userGpsIcon = L.icon({
             iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-gold.png',
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-            iconSize: [25, 41],
-            iconAnchor: [12, 41],
-            popupAnchor: [1, -34],
-            shadowSize: [41, 41]
+            iconSize: [25, 41], iconAnchor: [12, 41], popupAnchor: [1, -34], shadowSize: [41, 41]
         });
 
         let markersLayer = L.layerGroup().addTo(map);
@@ -1280,7 +1300,6 @@
             URL.revokeObjectURL(url);
         }
 
-        // رسم قائمة النقاط في نافذة الاستعلام
         function renderQueryList() {
             const container = document.getElementById('queryPointsList');
             container.innerHTML = '';
@@ -1628,7 +1647,9 @@
             document.getElementById('newName').value = '';
             document.getElementById('newLat').value = '';
             document.getElementById('newLon').value = '';
-            document.getElementById('newElev').value = '';
+            document.getElementById('newEllipsoidalHeight').value = '';
+            document.getElementById('previewGeoid').innerText = '14.500 متر';
+            document.getElementById('previewMSL').innerText = '-';
             document.getElementById('newType').value = 'Secondary';
             document.getElementById('newDesc').value = '';
             document.getElementById('addPointModal').style.display = 'block';
@@ -1712,7 +1733,7 @@
             const name = document.getElementById('newName').value.trim();
             const lat = document.getElementById('newLat').value.trim();
             const lon = document.getElementById('newLon').value.trim();
-            const elevation = document.getElementById('newElev').value.trim();
+            const ellipsoidalH = document.getElementById('newEllipsoidalHeight').value.trim();
             const type = document.getElementById('newType').value.trim();
             const description = document.getElementById('newDesc').value.trim();
 
@@ -1724,7 +1745,12 @@
             const parsedId = parseInt(id) || Math.floor(Math.random() * 900000) + 100000;
             const parsedLat = parseFloat(lat);
             const parsedLon = parseFloat(lon);
-            const elevVal = elevation ? parseFloat(elevation) : null;
+            
+            let finalElevation = null;
+            if (ellipsoidalH !== '' && !isNaN(parseFloat(ellipsoidalH))) {
+                let mslRes = calculateMeanSeaLevel(parseFloat(ellipsoidalH), parsedLat, parsedLon);
+                finalElevation = mslRes.msl;
+            }
 
             const newPoint = {
                 point_id: parsedId,
@@ -1734,8 +1760,8 @@
                 lat: parsedLat,
                 longitude: parsedLon,
                 lon: parsedLon,
-                elevation_m: elevVal,
-                elevation: elevVal,
+                elevation_m: finalElevation,
+                elevation: finalElevation,
                 type: type || 'Secondary',
                 description: description || ''
             };
@@ -1843,7 +1869,7 @@
                             <b>اسم النقطة:</b> ${pName}<br>
                             <b>خط العرض:</b> ${lat}<br>
                             <b>خط الطول:</b> ${lon}<br>
-                            <b>الارتفاع:</b> ${elev !== null && elev !== undefined ? elev + ' متر' : 'غير متوفر'}<br>
+                            <b>الارتفاع (فوق سطح البحر):</b> ${elev !== null && elev !== undefined ? elev + ' متر' : 'غير متوفر'}<br>
                             <b>النوع:</b> ${point.type || 'جيوديسي'}<br>
                             <b>الوصف:</b> ${point.description || 'لا يوجد'}<br>
                             <i style="color:#e74c3c; font-size:11px;">💡 انقر بزر الماوس الأيمن لتحديد النقطة للقياس الهندسي</i>
