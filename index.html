@@ -759,28 +759,30 @@
             <div id="navResult" class="result-box" style="display:none;"></div>
         </div>
 
-        <!-- تبويب حاسبة RTK المستقل بذاته -->
+        <!-- تبويب حاسبة RTK المحدث والمتصل بالسيرفر وقاعدة البيانات -->
         <div id="rtkTab" class="tab-content">
             <div class="form-group">
+                <label>اسم النقطة:</label>
+                <input type="text" id="rtkPointName" placeholder="مثال: RTK_001">
+            </div>
+            <div class="form-group">
                 <label>خط العرض (Latitude):</label>
-                <input type="number" step="any" id="rtkLat" placeholder="مثال: 26.82" oninput="calculateStandaloneMSL()">
+                <input type="number" step="any" id="rtkLat" placeholder="مثال: 26.82">
             </div>
             <div class="form-group">
                 <label>خط الطول (Longitude):</label>
-                <input type="number" step="any" id="rtkLon" placeholder="مثال: 30.80" oninput="calculateStandaloneMSL()">
+                <input type="number" step="any" id="rtkLon" placeholder="مثال: 30.80">
             </div>
             <div class="form-group">
-                <label>الارتفاع الإهليلجي من جهاز RTK ($h$ - متر):</label>
-                <input type="number" step="any" id="rtkEllipsoidalHeight" placeholder="مثال: 150.0" oninput="calculateStandaloneMSL()">
+                <label>الارتفاع الإلبيصودي من جهاز الـ GPS ($h$ - متر):</label>
+                <input type="number" step="any" id="rtkEllipsoidalHeight" placeholder="مثال: 150.0">
             </div>
-            <div class="form-group" style="background: #f4f6f7; padding: 8px; border-radius: 4px;">
-                <label style="color: #2980b9;">قيمة الجيود المحسوبة ($N$):</label>
-                <span id="rtkGeoidVal" style="font-weight: bold; font-size: 13px;">14.500 متر</span>
+            <div class="form-group">
+                <label>قيمة حيود الجيود ($N$ - متر):</label>
+                <input type="number" step="any" id="rtkGeoidN" placeholder="مثال: 14.500" value="14.500">
             </div>
-            <div class="form-group" style="background: #e8f8f5; padding: 8px; border-radius: 4px;">
-                <label style="color: #117a65;">الارتفاع فوق متوسط سطح البحر ($H$ - متر):</label>
-                <span id="rtkMSLVal" style="font-weight: bold; font-size: 14px; color: #117a65;">-</span>
-            </div>
+            <button class="tool-btn" style="width:100%; background:#27ae60; margin-top:5px;" onclick="calculateAndSaveRTKPoint()">حساب وحفظ النقطة ($H = h - N$) 🚀</button>
+            <div id="rtkResultBox" class="result-box" style="display:none; margin-top:10px;"></div>
         </div>
 
         <button class="clear-map-btn" onclick="clearMapMeasurements()">تحديث الخريطة</button>
@@ -852,31 +854,70 @@
     <!-- استدعاء مكتبة Leaflet البرمجية -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script>
-        // دوال حساب الجيود ومتوسط سطح البحر (Orthometric Height)
-        function getGeoidUndulation(lat, lon) {
-            // نموذج الجيود المحلي EGM2008 (قيمة تقديرية نموذجية)
-            return 14.500; 
-        }
+        // دالة إرسال وحفظ نقطة الـ RTK عبر الـ API الجديد وحساب H = h - N
+        async function calculateAndSaveRTKPoint() {
+            const point_name = document.getElementById('rtkPointName').value.trim();
+            const latitude = parseFloat(document.getElementById('rtkLat').value);
+            const longitude = parseFloat(document.getElementById('rtkLon').value);
+            const ellipsoidal_h = parseFloat(document.getElementById('rtkEllipsoidalHeight').value);
+            const geoid_n = parseFloat(document.getElementById('rtkGeoidN').value);
+            const resBox = document.getElementById('rtkResultBox');
 
-        function calculateMeanSeaLevel(rtkEllipsoidalHeight, lat, lon) {
-            let N = getGeoidUndulation(lat, lon);
-            let MSL = rtkEllipsoidalHeight - N; // المعادلة الجيوديسية: H = h - N
-            return {
-                msl: parseFloat(MSL.toFixed(4)),
-                geoid: N
-            };
-        }
+            if (!point_name || isNaN(latitude) || isNaN(longitude) || isNaN(ellipsoidal_h) || isNaN(geoid_n)) {
+                resBox.style.display = 'block';
+                resBox.style.color = '#c0392b';
+                resBox.style.background = '#fadbd8';
+                resBox.innerHTML = 'خطأ: يرجى تعبئة كافة حقول حاسبة الـ RTK بقيم صحيحة!';
+                return;
+            }
 
-        function calculateStandaloneMSL() {
-            let h = parseFloat(document.getElementById('rtkEllipsoidalHeight').value);
-            let lat = parseFloat(document.getElementById('rtkLat').value) || 0;
-            let lon = parseFloat(document.getElementById('rtkLon').value) || 0;
-            if (!isNaN(h)) {
-                let res = calculateMeanSeaLevel(h, lat, lon);
-                document.getElementById('rtkGeoidVal').innerText = res.geoid + " متر";
-                document.getElementById('rtkMSLVal').innerText = res.msl + " متر";
-            } else {
-                document.getElementById('rtkMSLVal').innerText = "-";
+            try {
+                const response = await fetch('/api/save-rtk-point', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ point_name, latitude, longitude, ellipsoidal_h, geoid_n })
+                });
+
+                const result = await response.json();
+
+                if (response.ok) {
+                    resBox.style.display = 'block';
+                    resBox.style.color = '#117a65';
+                    resBox.style.background = '#e8f8f5';
+                    resBox.innerHTML = `✅ تم الحساب والحفظ بنجاح!<br>
+                        📐 <b>الارتفاع الأرثومتري (H):</b> ${result.data.orthometric_h} متر`;
+                    
+                    showNotification('تم حساب الارتفاع الأرثومتري وحفظ النقطة في قاعدة البيانات بنجاح!', 'success');
+
+                    // إضافتها إلى مصفوفة النقاط وعرضها على الخريطة فوراً
+                    const newPt = {
+                        point_id: result.data.point_id,
+                        id: result.data.point_id,
+                        name: point_name,
+                        latitude: latitude,
+                        lat: latitude,
+                        longitude: longitude,
+                        lon: longitude,
+                        elevation_m: result.data.orthometric_h,
+                        elevation: result.data.orthometric_h,
+                        type: 'RTK_Point',
+                        description: 'نقطة محسوبة عبر حاسبة الـ RTK والجيويد'
+                    };
+                    allPointsData.push(newPt);
+                    displayMarkers(allPointsData);
+                    updateStatistics(allPointsData);
+                } else {
+                    resBox.style.display = 'block';
+                    resBox.style.color = '#c0392b';
+                    resBox.style.background = '#fadbd8';
+                    resBox.innerHTML = 'خطأ من الخادم: ' + (result.error || 'فشل الحفظ');
+                }
+            } catch (err) {
+                console.error(err);
+                resBox.style.display = 'block';
+                resBox.style.color = '#c0392b';
+                resBox.style.background = '#fadbd8';
+                resBox.innerHTML = 'تعذر الاتصال بالخادم لتخزين النقطة.';
             }
         }
 
@@ -2343,11 +2384,12 @@
             document.getElementById('profileStart').value = '';
             document.getElementById('profileEnd').value = '';
             document.getElementById('navTargetPoint').value = '';
+            document.getElementById('rtkPointName').value = '';
             document.getElementById('rtkLat').value = '';
             document.getElementById('rtkLon').value = '';
             document.getElementById('rtkEllipsoidalHeight').value = '';
-            document.getElementById('rtkGeoidVal').innerText = '14.500 متر';
-            document.getElementById('rtkMSLVal').innerText = '-';
+            document.getElementById('rtkGeoidN').value = '14.500';
+            document.getElementById('rtkResultBox').style.display = 'none';
 
             if (profileChartInstance) {
                 profileChartInstance.destroy();
