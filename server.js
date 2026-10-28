@@ -85,14 +85,14 @@ app.post('/api/save-rtk-point', async (req, res) => {
     }
 
     try {
-        // سحب قيمة N تلقائياً من جدول نقاط الجيود في قاعدة البيانات
+        // سحب قيمة N تلقائياً من جدول نقاط الجيود في قاعدة البيانات مع تحويل الإحداثيات لأرقام بدقة
         const geoidQuery = `
             SELECT "SAMPLE_1" AS geoid_n
             FROM public.geoid_grid_points
             ORDER BY geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)
             LIMIT 1;
         `;
-        const geoidResult = await pool.query(geoidQuery, [longitude, latitude]);
+        const geoidResult = await pool.query(geoidQuery, [parseFloat(longitude), parseFloat(latitude)]);
 
         if (geoidResult.rows.length === 0) {
             return res.status(404).json({ error: 'تعذر العثور على قيمة الجيود (N) لهذا الموقع الجغرافي' });
@@ -115,7 +115,7 @@ app.post('/api/save-rtk-point', async (req, res) => {
 
     } catch (err) {
         console.error('خطأ في معالجة طلب الـ RTK بالسيرفر:', err);
-        res.status(500).json({ error: 'خطأ في معالجة طلب الـ RTK بالسيرفر' });
+        res.status(500).json({ error: 'خطأ في معالجة طلب الـ RTK بالسيرفر: ' + err.message });
     }
 });
 
