@@ -13,9 +13,9 @@ app.use(express.json());
 // قراءة وعرض ملفات المشروع (مثل index.html و الملفات الجغرافية)
 app.use(express.static(__dirname));
 
-// إعداد الاتصال المباشر بقاعدة بيانات PostgreSQL عبر Supabase لمنع أخطاء الشبكة
+// إعداد الاتصال بقاعدة بيانات PostgreSQL عبر Supabase بالرابط المباشر لتجاوز مشاكل الـ IPv6 و Render
 const pool = new Pool({
-    connectionString: 'postgresql://postgres:62936015747z@db.kofctuvfndybznirqtad.supabase.co:5432/postgres',
+    connectionString: 'postgresql://postgres.kofctuvfndybznirqtad:62936015747z@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
     ssl: {
         rejectUnauthorized: false // ضروري جداً للاتصال بقواعد بيانات Supabase من منصة سحابية
     }
