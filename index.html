@@ -2516,8 +2516,29 @@
             }
         }
 
-        // التشغيل الأولي
-        loadPoints();
+        // دالة جلب النقاط من الخادم وقاعدة البيانات عند تحميل الصفحة
+        async function fetchPointsFromServer() {
+            try {
+                const response = await fetch('/api/points');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (Array.isArray(data)) {
+                        allPointsData = data;
+                        loadPoints();
+                        showNotification('تم استدعاء نقاط التحكم الجيوديسية بنجاح من قاعدة البيانات!', 'success');
+                    }
+                } else {
+                    showNotification('تعذر جلب النقاط من الخادم، يتم استخدام الوضع المحلي.', 'error');
+                    loadPoints();
+                }
+            } catch (err) {
+                console.error('خطأ في الاتصال:', err);
+                loadPoints();
+            }
+        }
+
+        // التشغيل الأولي المحدث
+        fetchPointsFromServer();
     </script>
 </body>
 </html>
