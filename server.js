@@ -15,7 +15,7 @@ app.use(express.static(__dirname));
 
 // إعداد الاتصال المباشر بقاعدة بيانات PostgreSQL عبر Supabase لمنع أخطاء الشبكة
 const pool = new Pool({
-    connectionString: 'postgresql://postgres.kofctuvfndybznirqtad:62936015747z@aws-1-eu-central-1.pooler.supabase.com:5432/postgres',
+    connectionString: 'postgresql://postgres:62936015747z@db.kofctuvfndybznirqtad.supabase.co:5432/postgres',
     ssl: {
         rejectUnauthorized: false // ضروري جداً للاتصال بقواعد بيانات Supabase من منصة سحابية
     }
