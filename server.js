@@ -6,9 +6,9 @@ try {
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
-const fs = require('fs');
 const path = require('path');
-const csv = require('csv-parser');
+const fs = require('fs');
+const readline = require('readline'); // مكتبة مدمجة آمنة لا تحتاج إلى تثبيت وتمنع فشل البناء على Render
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -20,34 +20,43 @@ app.use(express.json());
 // قراءة وعرض ملفات المشروع (مثل index.html و الملفات الجغرافية)
 app.use(express.static(__dirname));
 
-// تخزين بيانات ملف الجيود بالكامل (10,890 نقطة) في الذاكرة محلياً لضمان الدقة وتجاوز مشاكل الشبكة
+// تخزين بيانات ملف الجيود بالكامل (10,890 نقطة) في الذاكرة محلياً لضمان السرعة والدقة المطلقة
 let geoidData = [];
 
-function loadGeoidCsv() {
-    const results = [];
+async function loadGeoidCsv() {
     const csvPath = path.join(__dirname, 'khartoum.csv');
-    if (fs.existsSync(csvPath)) {
-        fs.createReadStream(csvPath)
-            .pipe(csv())
-            .on('data', (data) => {
-                results.push({
-                    left: parseFloat(data.left),
-                    right: parseFloat(data.right),
-                    bottom: parseFloat(data.bottom),
-                    top: parseFloat(data.top),
-                    SAMPLE_1: parseFloat(data.SAMPLE_1)
-                });
-            })
-            .on('end', () => {
-                geoidData = results;
-                console.log(`✅ تم تحميل جميع نقاط ملف الجيود محلياً بنجاح. إجمالي النقاط في الذاكرة: ${geoidData.length} نقطة`);
-            })
-            .on('error', (err) => {
-                console.error('❌ خطأ أثناء قراءة ملف الجيود:', err.message);
-            });
-    } else {
+    if (!fs.existsSync(csvPath)) {
         console.warn('⚠️ ملف khartoum.csv غير موجود في مجلد المشروع المحلي!');
+        return;
     }
+
+    const fileStream = fs.createReadStream(csvPath);
+    const rl = readline.createInterface({
+        input: fileStream,
+        crlfDelay: Infinity
+    });
+
+    let isHeader = true;
+    for await (const line of rl) {
+        if (isHeader) {
+            isHeader = false; // تخطي سطر العناوين
+            continue;
+        }
+        if (!line.trim()) continue;
+
+        const parts = line.split(',');
+        // الأعمدة: id, left, top, right, bottom, row_index, col_index, SAMPLE_1
+        if (parts.length >= 8) {
+            geoidData.push({
+                left: parseFloat(parts[1]),
+                top: parseFloat(parts[2]),
+                right: parseFloat(parts[3]),
+                bottom: parseFloat(parts[4]),
+                SAMPLE_1: parseFloat(parts[7])
+            });
+        }
+    }
+    console.log(`✅ تم تحميل جميع نقاط ملف الجيود محلياً بنجاح. إجمالي النقاط في الذاكرة: ${geoidData.length} نقطة`);
 }
 loadGeoidCsv();
 
@@ -154,7 +163,7 @@ app.delete('/api/points/:id', async (req, res) => {
     }
 });
 
-// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية محلياً بدقة تامة من بين جميع نقاط الـ CSV
+// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية محلياً بدقة تامة من بين جميع النقاط الـ 10,890
 app.post('/api/save-rtk-point', async (req, res) => {
     const { point_name, latitude, longitude, ellipsoidal_h } = req.body;
 
@@ -163,7 +172,7 @@ app.post('/api/save-rtk-point', async (req, res) => {
     }
 
     try {
-        let geoid_n = 5.024; // قيمة افتراضية آمنة
+        let geoid_n = 0.0;
 
         if (geoidData && geoidData.length > 0) {
             // أ) البحث المطابق التام داخل نطاق الخلية (Bounding Box)
@@ -175,7 +184,7 @@ app.post('/api/save-rtk-point', async (req, res) => {
             if (matched) {
                 geoid_n = matched.SAMPLE_1;
             } else {
-                // ب) البحث الهندسي الدقيق عن أقرب نقطة شبكية من بين جميع النقاط
+                // ب) البحث الهندسي الدقيق عن أقرب نقطة شبكية من بين جميع النقاط الـ 10,890
                 let closest = geoidData.reduce((prev, curr) => {
                     const prevDist = Math.abs(prev.left - longitude) + Math.abs(prev.bottom - latitude);
                     const currDist = Math.abs(curr.left - longitude) + Math.abs(curr.bottom - latitude);
@@ -202,7 +211,7 @@ app.post('/api/save-rtk-point', async (req, res) => {
             longitude, 
             parseFloat(orthometric_h.toFixed(3)), 
             'RTK_Point', 
-            `نقطة RTK محسوبة آلياً - قيمة N: ${geoid_n.toFixed(3)}م`
+            `نقطة RTK محسوبة محلياً - قيمة N: ${geoid_n.toFixed(3)}م`
         ];
 
         const savedResult = await pool.query(insertQuery, insertValues);
