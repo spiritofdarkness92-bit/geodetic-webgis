@@ -30,99 +30,6 @@ pool.connect((err, client, release) => {
     release();
 });
 
-// ==========================================
-// مسارات الجيود والتحويلات المكانية (Web-GIS)
-// ==========================================
-
-// 1. جلب قيمة الجيود (N) بناءً على إحداثيات خط الطول والعرض (أقرب نقطة من شبكة 846 ألف نقطة)
-app.get('/api/get-geoid', async (req, res) => {
-    const { lng, lat } = req.query;
-
-    if (!lng || !lat) {
-        return res.status(400).json({ error: 'الرجاء إرسال خط الطول (lng) وخط العرض (lat)' });
-    }
-
-    try {
-        const query = `
-            SELECT 
-                id,
-                "SAMPLE_1" AS geoid_n,
-                ST_Distance(
-                    geom::geography, 
-                    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
-                ) AS distance_meters
-            FROM 
-                public.geoid_grid_points
-            ORDER BY 
-                geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)
-            LIMIT 1;
-        `;
-
-        const values = [parseFloat(lng), parseFloat(lat)];
-        const result = await pool.query(query, values);
-
-        if (result.rows.length > 0) {
-            res.json({
-                success: true,
-                data: result.rows[0]
-            });
-        } else {
-            res.status(404).json({ error: 'لم يتم العثور على نقطة قريبة في شبكة الجيود' });
-        }
-
-    } catch (err) {
-        console.error('خطأ أثناء جلب قيمة الجيود:', err);
-        res.status(500).json({ error: 'حدث خطأ في الخادم أثناء جلب قيمة الجيود' });
-    }
-});
-
-// 2. حاسبة وحفظ نقطة الـ RTK والارتفاع الأرثومتري (H = h - N)
-app.post('/api/save-rtk-point', async (req, res) => {
-    const { point_name, latitude, longitude, ellipsoidal_h } = req.body;
-
-    if (!point_name || latitude === undefined || longitude === undefined || ellipsoidal_h === undefined) {
-        return res.status(400).json({ error: 'بيانات غير مكتملة لحاسبة الـ RTK' });
-    }
-
-    try {
-        // سحب قيمة N تلقائياً من جدول نقاط الجيود في قاعدة البيانات مع تحويل الإحداثيات لأرقام بدقة
-        const geoidQuery = `
-            SELECT "SAMPLE_1" AS geoid_n
-            FROM public.geoid_grid_points
-            ORDER BY geom <-> ST_SetSRID(ST_MakePoint($1, $2), 4326)
-            LIMIT 1;
-        `;
-        const geoidResult = await pool.query(geoidQuery, [parseFloat(longitude), parseFloat(latitude)]);
-
-        if (geoidResult.rows.length === 0) {
-            return res.status(404).json({ error: 'تعذر العثور على قيمة الجيود (N) لهذا الموقع الجغرافي' });
-        }
-
-        const geoid_n = parseFloat(geoidResult.rows[0].geoid_n);
-        const orthometric_h = parseFloat(ellipsoidal_h) - geoid_n;
-        const newPointId = Math.floor(Math.random() * 900000) + 100000;
-
-        res.json({
-            success: true,
-            message: 'تم الحساب واستخراج N بنجاح',
-            data: {
-                point_id: newPointId,
-                point_name: point_name,
-                geoid_n: geoid_n.toFixed(3),
-                orthometric_h: orthometric_h.toFixed(3)
-            }
-        });
-
-    } catch (err) {
-        console.error('خطأ في معالجة طلب الـ RTK بالسيرفر:', err);
-        res.status(500).json({ error: 'خطأ في معالجة طلب الـ RTK بالسيرفر: ' + err.message });
-    }
-});
-
-// ==========================================
-// مسارات إدارة النقاط (Stations CRUD)
-// ==========================================
-
 // 1. جلب جميع النقاط (GET)
 app.get('/api/points', async (req, res) => {
     try {
@@ -206,6 +113,68 @@ app.delete('/api/points/:id', async (req, res) => {
     } catch (err) {
         console.error('خطأ أثناء حذف النقطة:', err);
         res.status(500).json({ error: 'حدث خطأ في الخادم أثناء حذف النقطة' });
+    }
+});
+
+// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية من جدول khartoum_geoid
+app.post('/api/save-rtk-point', async (req, res) => {
+    const { point_name, latitude, longitude, ellipsoidal_h } = req.body;
+
+    if (!point_name || isNaN(latitude) || isNaN(longitude) || isNaN(ellipsoidal_h)) {
+        return res.status(400).json({ success: false, error: 'جميع الحقول مطلوبة وبقيم صحيحة' });
+    }
+
+    try {
+        // البحث عن أقرب نقطة إحداثيات في جدول khartoum_geoid لجلب قيمة SAMPLE_1 (التي تُمثل N)
+        const findNearestQuery = `
+            SELECT sample_1 
+            FROM khartoum_geoid 
+            ORDER BY ABS(right - $1) + ABS(bottom - $2) ASC 
+            LIMIT 1;
+        `;
+        const nearestResult = await pool.query(findNearestQuery, [longitude, latitude]);
+
+        let geoid_n = 0.0;
+        if (nearestResult.rows.length > 0) {
+            geoid_n = parseFloat(nearestResult.rows[0].sample_1);
+        }
+
+        // حساب الارتفاع الأرثومتري: H = h - N
+        const orthometric_h = parseFloat(ellipsoidal_h) - geoid_n;
+        const point_id = Math.floor(Math.random() * 900000) + 100000;
+
+        // حفظ النقطة الجديدة في جدول stations الرئيسي
+        const insertQuery = `
+            INSERT INTO stations (point_id, name, latitude, longitude, elevation_m, type, description)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            RETURNING *;
+        `;
+        const insertValues = [
+            point_id, 
+            point_name, 
+            latitude, 
+            longitude, 
+            parseFloat(orthometric_h.toFixed(3)), 
+            'RTK_Point', 
+            `نقطة RTK محسوبة آلياً - قيمة N: ${geoid_n.toFixed(3)}م`
+        ];
+
+        const savedResult = await pool.query(insertQuery, insertValues);
+
+        console.log(`🛰️ تم حساب وحفظ نقطة RTK بنجاح: ${point_name}`);
+        res.status(201).json({
+            success: true,
+            data: {
+                point_id: point_id,
+                geoid_n: geoid_n.toFixed(3),
+                orthometric_h: orthometric_h.toFixed(3),
+                station: savedResult.rows[0]
+            }
+        });
+
+    } catch (err) {
+        console.error('خطأ أثناء حساب وحفظ نقطة الـ RTK:', err);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء معالجة نقطة الـ RTK' });
     }
 });
 
