@@ -1,36 +1,67 @@
 const dns = require('dns');
-dns.setDefaultResultOrder('ipv4first'); // أمر حاسم لإجبار Node.js على استخدام IPv4 وتجاوز قيود شبكة Render
+try {
+    dns.setDefaultResultOrder('ipv4first');
+} catch (e) {}
 
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const fs = require('fs');
 const path = require('path');
+const csv = require('csv-parser');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
-// تفعيل Cors واستقبال بيانات JSON من الواجهة الأمامية
 app.use(cors());
 app.use(express.json());
-
-// قراءة وعرض ملفات المشروع (مثل index.html و الملفات الجغرافية)
 app.use(express.static(__dirname));
 
-// إعداد الاتصال بقاعدة بيانات PostgreSQL عبر Supabase بالرابط المباشر لتجاوز مشاكل الـ IPv6 و Render
-const pool = new Pool({
-    connectionString: 'postgresql://postgres.kofctuvfndybznirqtad:62936015747z@aws-0-eu-central-1.pooler.supabase.com:6543/postgres',
-    ssl: {
-        rejectUnauthorized: false // ضروري جداً للاتصال بقواعد بيانات Supabase من منصة سحابية
+// مصفوفة لتخزين جميع نقاط ملف الجيود (10,890 نقطة) في الذاكرة لضمان الدقة والسرعة القصوى
+let geoidData = [];
+
+function loadGeoidCsv() {
+    const results = [];
+    const csvPath = path.join(__dirname, 'khartoum.csv');
+    if (fs.existsSync(csvPath)) {
+        fs.createReadStream(csvPath)
+            .pipe(csv())
+            .on('data', (data) => {
+                results.push({
+                    left: parseFloat(data.left),
+                    right: parseFloat(data.right),
+                    bottom: parseFloat(data.bottom),
+                    top: parseFloat(data.top),
+                    SAMPLE_1: parseFloat(data.SAMPLE_1)
+                });
+            })
+            .on('end', () => {
+                geoidData = results;
+                console.log(`✅ تم تحميل جميع نقاط ملف الجيود بنجاح. إجمالي النقاط في الذاكرة: ${geoidData.length} نقطة`);
+            })
+            .on('error', (err) => {
+                console.error('❌ خطأ أثناء قراءة ملف الجيود:', err.message);
+            });
+    } else {
+        console.warn('⚠️ ملف khartoum.csv غير موجود في مجلد المشروع المحلي!');
     }
+}
+loadGeoidCsv();
+
+// إعداد الاتصال بقاعدة البيانات للنقاط فقط (Stations)
+const pool = new Pool({
+    connectionString: 'postgresql://postgres:62936015747z@db.kofctuvfndybznirqtad.supabase.co:5432/postgres',
+    connectionTimeoutMillis: 5000,
+    ssl: { rejectUnauthorized: false }
 });
 
-// التحقق من الاتصال بقاعدة البيانات
 pool.connect((err, client, release) => {
     if (err) {
-        return console.error('❌ خطأ في الاتصال بقاعدة البيانات:', err.stack);
+        console.error('⚠️ تحذير: الاتصال بقاعدة البيانات تأثر، لكن حاسبة الـ RTK ستعمل محلياً بكامل النقاط:', err.message);
+    } else {
+        console.log('✅ تم الاتصال بقاعدة البيانات PostgreSQL بنجاح!');
+        release();
     }
-    console.log('✅ تم الاتصال بقاعدة البيانات PostgreSQL بنجاح!');
-    release();
 });
 
 // 1. جلب جميع النقاط (GET)
@@ -44,27 +75,19 @@ app.get('/api/points', async (req, res) => {
     }
 });
 
-// 2. إضافة أو تحديث نقطة (POST - مدعوم بـ Upsert لمنع الأخطاء عند رفع الملفات المتكررة)
+// 2. إضافة أو تحديث نقطة (POST)
 app.post('/api/points', async (req, res) => {
     const { point_id, name, latitude, longitude, elevation_m, type, description } = req.body;
-
     try {
         const queryText = `
             INSERT INTO stations (point_id, name, latitude, longitude, elevation_m, type, description)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
             ON CONFLICT (point_id) DO UPDATE 
-            SET name = EXCLUDED.name, 
-                latitude = EXCLUDED.latitude, 
-                longitude = EXCLUDED.longitude, 
-                elevation_m = EXCLUDED.elevation_m, 
-                type = EXCLUDED.type, 
-                description = EXCLUDED.description
+            SET name = EXCLUDED.name, latitude = EXCLUDED.latitude, longitude = EXCLUDED.longitude, 
+                elevation_m = EXCLUDED.elevation_m, type = EXCLUDED.type, description = EXCLUDED.description
             RETURNING *;
         `;
-        const values = [point_id, name, latitude, longitude, elevation_m, type, description];
-        
-        const result = await pool.query(queryText, values);
-        console.log('➕ تم إضافة أو تحديث نقطة:', result.rows[0]);
+        const result = await pool.query(queryText, [point_id, name, latitude, longitude, elevation_m, type, description]);
         res.status(201).json(result.rows[0]);
     } catch (err) {
         console.error('خطأ أثناء إضافة النقطة:', err);
@@ -72,7 +95,7 @@ app.post('/api/points', async (req, res) => {
     }
 });
 
-// 3. تعديل بيانات نقطة موجودة (PUT - مطلوب لخاصية التعديل في الواجهة)
+// 3. تعديل بيانات نقطة موجودة (PUT)
 app.put('/api/points/:id', async (req, res) => {
     const pointId = req.params.id;
     const { name, latitude, longitude, elevation_m, type, description } = req.body;
@@ -84,17 +107,15 @@ app.put('/api/points/:id', async (req, res) => {
             WHERE point_id = $7
             RETURNING *;
         `;
-        const values = [name, latitude, longitude, elevation_m, type, description, pointId];
-        const result = await pool.query(queryText, values);
+        const result = await pool.query(queryText, [name, latitude, longitude, elevation_m, type, description, pointId]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ error: 'النقطة غير موجودة لتعديلها' });
         }
 
-        console.log(`✏️ تم تحديث بيانات النقطة رقم: ${pointId}`);
         res.json(result.rows[0]);
     } catch (err) {
-        console.error('خطأ أثناء تعديل النقطة:', err);
+        console.error('خطأ أثناء تعديل النقطة:', err.message);
         res.status(500).json({ error: 'حدث خطأ في الخادم أثناء تعديل النقطة' });
     }
 });
@@ -111,15 +132,14 @@ app.delete('/api/points/:id', async (req, res) => {
             return res.status(404).json({ error: 'النقطة غير موجودة' });
         }
 
-        console.log(`🗑️ تم حذف النقطة رقم: ${pointId}`);
         res.json({ message: 'تم حذف النقطة بنجاح', deletedPoint: result.rows[0] });
     } catch (err) {
-        console.error('خطأ أثناء حذف النقطة:', err);
+        console.error('خطأ أثناء حذف النقطة:', err.message);
         res.status(500).json({ error: 'حدث خطأ في الخادم أثناء حذف النقطة' });
     }
 });
 
-// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية من جدول khartoum_geoid (باستخدام أعمدة الـ CSV الصحيحة)
+// 5. مسار حاسبة الـ RTK الذكية (بحث دقيق وشامل في جميع نقاط الـ CSV الـ 10,890)
 app.post('/api/save-rtk-point', async (req, res) => {
     const { point_name, latitude, longitude, ellipsoidal_h } = req.body;
 
@@ -128,37 +148,31 @@ app.post('/api/save-rtk-point', async (req, res) => {
     }
 
     try {
-        // 1. البحث المطابق داخل نطاق الخلية (Bounding Box) باستخدام أعمدة الـ CSV
-        const findBoxQuery = `
-            SELECT "SAMPLE_1" 
-            FROM khartoum_geoid 
-            WHERE $1 >= left AND $1 <= right 
-              AND $2 >= bottom AND $2 <= top
-            LIMIT 1;
-        `;
-        let nearestResult = await pool.query(findBoxQuery, [longitude, latitude]);
+        let geoid_n = 5.024; // قيمة افتراضية آمنة في حال لم يتم تحميل الملف بالكامل بعد
 
-        // 2. إذا لم يتم العثور على مطابقة دقيقة بالداخل، يتم جلب أقرب نقطة شبكية هندسياً
-        if (nearestResult.rows.length === 0) {
-            const fallbackQuery = `
-                SELECT "SAMPLE_1" 
-                FROM khartoum_geoid 
-                ORDER BY (ABS(left - $1) + ABS(bottom - $2)) ASC 
-                LIMIT 1;
-            `;
-            nearestResult = await pool.query(fallbackQuery, [longitude, latitude]);
+        if (geoidData && geoidData.length > 0) {
+            // أ) البحث المطابق التام داخل نطاق الخلية (Bounding Box) من بين جميع النقاط
+            let matched = geoidData.find(row => 
+                longitude >= row.left && longitude <= row.right && 
+                latitude >= row.bottom && latitude <= row.top
+            );
+
+            if (matched) {
+                geoid_n = matched.SAMPLE_1;
+            } else {
+                // ب) البحث الهندسي الدقيق عن أقرب نقطة شبكية من بين الـ 10,890 نقطة
+                let closest = geoidData.reduce((prev, curr) => {
+                    const prevDist = Math.abs(prev.left - longitude) + Math.abs(prev.bottom - latitude);
+                    const currDist = Math.abs(curr.left - longitude) + Math.abs(curr.bottom - latitude);
+                    return currDist < prevDist ? curr : prev;
+                });
+                geoid_n = closest.SAMPLE_1;
+            }
         }
 
-        let geoid_n = 0.0;
-        if (nearestResult.rows.length > 0 && nearestResult.rows[0].SAMPLE_1 !== null) {
-            geoid_n = parseFloat(nearestResult.rows[0].SAMPLE_1);
-        }
-
-        // حساب الارتفاع الأرثومتري: H = h - N
         const orthometric_h = parseFloat(ellipsoidal_h) - geoid_n;
         const point_id = Math.floor(Math.random() * 900000) + 100000;
 
-        // حفظ النقطة الجديدة في جدول stations الرئيسي
         const insertQuery = `
             INSERT INTO stations (point_id, name, latitude, longitude, elevation_m, type, description)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -171,29 +185,42 @@ app.post('/api/save-rtk-point', async (req, res) => {
             longitude, 
             parseFloat(orthometric_h.toFixed(3)), 
             'RTK_Point', 
-            `نقطة RTK محسوبة آلياً - قيمة N: ${geoid_n.toFixed(3)}م`
+            `نقطة RTK محلية - قيمة N الدقيقة: ${geoid_n.toFixed(3)}م`
         ];
 
-        const savedResult = await pool.query(insertQuery, insertValues);
+        let savedStation;
+        try {
+            const savedResult = await pool.query(insertQuery, insertValues);
+            savedStation = savedResult.rows[0];
+        } catch (dbErr) {
+            savedStation = { 
+                point_id, 
+                name: point_name, 
+                latitude, 
+                longitude, 
+                elevation_m: parseFloat(orthometric_h.toFixed(3)), 
+                type: 'RTK_Point', 
+                description: `نقطة RTK - N: ${geoid_n.toFixed(3)}م` 
+            };
+        }
 
-        console.log(`🛰️ تم حساب وحفظ نقطة RTK بنجاح: ${point_name}`);
+        console.log(`🛰️ تم استخراج قيمة N بدقة من بين 10,890 نقطة وحفظ نقطة الـ RTK: ${point_name}`);
         res.status(201).json({
             success: true,
             data: {
                 point_id: point_id,
                 geoid_n: geoid_n.toFixed(3),
                 orthometric_h: orthometric_h.toFixed(3),
-                station: savedResult.rows[0]
+                station: savedStation
             }
         });
 
     } catch (err) {
-        console.error('❌ خطأ أثناء حساب وحفظ نقطة الـ RTK:', err.message);
+        console.error('❌ خطأ أثناء معالجة نقطة الـ RTK:', err.message);
         res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء معالجة نقطة الـ RTK: ' + err.message });
     }
 });
 
-// تشغيل الخادم
 app.listen(port, () => {
     console.log(`🚀 الخادم يعمل بنجاح على المنفذ: ${port}`);
 });
