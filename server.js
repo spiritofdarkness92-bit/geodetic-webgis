@@ -13,9 +13,9 @@ app.use(express.json());
 // قراءة وعرض ملفات المشروع (مثل index.html و الملفات الجغرافية)
 app.use(express.static(__dirname));
 
-// إعداد الاتصال بقاعدة بيانات PostgreSQL عبر Supabase ومنصة Render
+// إعداد الاتصال المباشر بقاعدة بيانات PostgreSQL عبر Supabase لمنع أخطاء الشبكة
 const pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
+    connectionString: 'postgresql://postgres.kofctuvfndybznirqtad:62936015747z@aws-1-eu-central-1.pooler.supabase.com:5432/postgres',
     ssl: {
         rejectUnauthorized: false // ضروري جداً للاتصال بقواعد بيانات Supabase من منصة سحابية
     }
@@ -116,7 +116,7 @@ app.delete('/api/points/:id', async (req, res) => {
     }
 });
 
-// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية من جدول khartoum_geoid
+// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية من جدول khartoum_geoid (باستخدام الأعمدة الصحيحة)
 app.post('/api/save-rtk-point', async (req, res) => {
     const { point_name, latitude, longitude, ellipsoidal_h } = req.body;
 
@@ -125,11 +125,11 @@ app.post('/api/save-rtk-point', async (req, res) => {
     }
 
     try {
-        // البحث عن أقرب نقطة إحداثيات في جدول khartoum_geoid لجلب قيمة SAMPLE_1 (التي تُمثل N)
+        // البحث عن أقرب نقطة في جدول khartoum_geoid باستخدام أعمدة الإحداثيات المتاحة
         const findNearestQuery = `
             SELECT sample_1 
             FROM khartoum_geoid 
-            ORDER BY ABS(right - $1) + ABS(bottom - $2) ASC 
+            ORDER BY ABS("right" - $1) + ABS(bottom - $2) ASC 
             LIMIT 1;
         `;
         const nearestResult = await pool.query(findNearestQuery, [longitude, latitude]);
