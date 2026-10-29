@@ -1,14 +1,9 @@
-const dns = require('dns');
-try {
-    dns.setDefaultResultOrder('ipv4first');
-} catch (e) {}
-
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
-const readline = require('readline'); // مكتبة مدمجة آمنة لا تحتاج إلى تثبيت وتمنع فشل البناء على Render
+const readline = require('readline'); // مكتبة مدمجة آمنة لا تحتاج تثبيت وتمنع فشل البناء على Render
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -45,7 +40,7 @@ async function loadGeoidCsv() {
         if (!line.trim()) continue;
 
         const parts = line.split(',');
-        // الأعمدة: id, left, top, right, bottom, row_index, col_index, SAMPLE_1
+        // الأعمدة حسب ملف khartoum.csv: id, left, top, right, bottom, row_index, col_index, SAMPLE_1
         if (parts.length >= 8) {
             geoidData.push({
                 left: parseFloat(parts[1]),
@@ -163,7 +158,7 @@ app.delete('/api/points/:id', async (req, res) => {
     }
 });
 
-// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية محلياً بدقة تامة من بين جميع النقاط الـ 10,890
+// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية محلياً بدقة تامة من بين جميع نقاط الـ CSV (10,890 نقطة)
 app.post('/api/save-rtk-point', async (req, res) => {
     const { point_name, latitude, longitude, ellipsoidal_h } = req.body;
 
@@ -184,7 +179,7 @@ app.post('/api/save-rtk-point', async (req, res) => {
             if (matched) {
                 geoid_n = matched.SAMPLE_1;
             } else {
-                // ب) البحث الهندسي الدقيق عن أقرب نقطة شبكية من بين جميع النقاط الـ 10,890
+                // ب) البحث الهندسي الدقيق عن أقرب نقطة شبكية من بين جميع النقاط
                 let closest = geoidData.reduce((prev, curr) => {
                     const prevDist = Math.abs(prev.left - longitude) + Math.abs(prev.bottom - latitude);
                     const currDist = Math.abs(curr.left - longitude) + Math.abs(curr.bottom - latitude);
@@ -198,7 +193,7 @@ app.post('/api/save-rtk-point', async (req, res) => {
         const orthometric_h = parseFloat(ellipsoidal_h) - geoid_n;
         const point_id = Math.floor(Math.random() * 900000) + 100000;
 
-        // حفظ النقطة الجديدة في جدول stations الرئيسي بقاعدة البيانات
+        // حفظ النقطة الجديدة في جدول stations الرئيسي
         const insertQuery = `
             INSERT INTO stations (point_id, name, latitude, longitude, elevation_m, type, description)
             VALUES ($1, $2, $3, $4, $5, $6, $7)
@@ -211,7 +206,7 @@ app.post('/api/save-rtk-point', async (req, res) => {
             longitude, 
             parseFloat(orthometric_h.toFixed(3)), 
             'RTK_Point', 
-            `نقطة RTK محسوبة محلياً - قيمة N: ${geoid_n.toFixed(3)}م`
+            `نقطة RTK محسوبة آلياً - قيمة N: ${geoid_n.toFixed(3)}م`
         ];
 
         const savedResult = await pool.query(insertQuery, insertValues);
