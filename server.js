@@ -116,7 +116,7 @@ app.delete('/api/points/:id', async (req, res) => {
     }
 });
 
-// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية من جدول khartoum_geoid (باستخدام الأعمدة الصحيحة)
+// 5. مسار حاسبة الـ RTK واستخراج قيمة N الحسابية من جدول khartoum_geoid (باستخدام أعمدة الـ CSV الصحيحة)
 app.post('/api/save-rtk-point', async (req, res) => {
     const { point_name, latitude, longitude, ellipsoidal_h } = req.body;
 
@@ -125,18 +125,30 @@ app.post('/api/save-rtk-point', async (req, res) => {
     }
 
     try {
-        // البحث عن أقرب نقطة في جدول khartoum_geoid باستخدام أعمدة الإحداثيات المتاحة
-        const findNearestQuery = `
-            SELECT sample_1 
+        // 1. البحث المطابق داخل نطاق الخلية (Bounding Box) باستخدام أعمدة الـ CSV
+        const findBoxQuery = `
+            SELECT "SAMPLE_1" 
             FROM khartoum_geoid 
-            ORDER BY ABS("right" - $1) + ABS(bottom - $2) ASC 
+            WHERE $1 >= left AND $1 <= right 
+              AND $2 >= bottom AND $2 <= top
             LIMIT 1;
         `;
-        const nearestResult = await pool.query(findNearestQuery, [longitude, latitude]);
+        let nearestResult = await pool.query(findBoxQuery, [longitude, latitude]);
+
+        // 2. إذا لم يتم العثور على مطابقة دقيقة بالداخل، يتم جلب أقرب نقطة شبكية هندسياً
+        if (nearestResult.rows.length === 0) {
+            const fallbackQuery = `
+                SELECT "SAMPLE_1" 
+                FROM khartoum_geoid 
+                ORDER BY (ABS(left - $1) + ABS(bottom - $2)) ASC 
+                LIMIT 1;
+            `;
+            nearestResult = await pool.query(fallbackQuery, [longitude, latitude]);
+        }
 
         let geoid_n = 0.0;
-        if (nearestResult.rows.length > 0) {
-            geoid_n = parseFloat(nearestResult.rows[0].sample_1);
+        if (nearestResult.rows.length > 0 && nearestResult.rows[0].SAMPLE_1 !== null) {
+            geoid_n = parseFloat(nearestResult.rows[0].SAMPLE_1);
         }
 
         // حساب الارتفاع الأرثومتري: H = h - N
@@ -173,8 +185,8 @@ app.post('/api/save-rtk-point', async (req, res) => {
         });
 
     } catch (err) {
-        console.error('خطأ أثناء حساب وحفظ نقطة الـ RTK:', err);
-        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء معالجة نقطة الـ RTK' });
+        console.error('❌ خطأ أثناء حساب وحفظ نقطة الـ RTK:', err.message);
+        res.status(500).json({ success: false, error: 'حدث خطأ في الخادم أثناء معالجة نقطة الـ RTK: ' + err.message });
     }
 });
 
